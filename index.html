@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f6f0">
+  <meta name="theme-color" content="#f6f1e8">
   <title>Калькулятор стоимости бухгалтерского обслуживания</title>
   <script>
     // СТАВКА И ДЕМОНСТРАЦИОННЫЕ НОРМАТИВЫ.
@@ -435,6 +435,81 @@
       }
       .period-field { padding-inline: 5px; }
     }
+    @media screen {
+      :root {
+        color: #2e271f;
+        background: #f6f1e8;
+        --green: #823a4c;
+        --muted: #675a50;
+        --line: #ded4c5;
+        --light: #f6e8e9;
+        --dark: #552638;
+        --mint: #943d55;
+      }
+      .wrap { width: min(1192px, calc(100% - 72px)); }
+      .topbar { background: #f9f5ee; border-color: #d4c7b7; }
+      .topbar .wrap { min-height: 64px; }
+      .brand { gap: 10px; letter-spacing: .015em; }
+      .brand-icon { background: transparent; border: 1px solid #a96b79; border-radius: 3px; }
+      .brand-icon span { background: var(--green); }
+      .demo { background: transparent; border: 0; border-radius: 0; color: var(--muted); padding-inline: 0; }
+      .demo::before { background: var(--green); }
+      .intro { padding-block: 48px 30px; }
+      h1, .section h2, .summary h2, .total strong {
+        font-family: Georgia, serif;
+        font-weight: 500;
+      }
+      h1 { font-size: clamp(2.3rem, 5.4vw, 4.25rem); letter-spacing: -.05em; }
+      .layout { grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr); gap: clamp(18px, 3.1vw, 42px); }
+      .controls, .summary { background: #fffdf8; border: 1px solid var(--line); border-radius: 6px; padding: clamp(18px, 2.8vw, 35px); }
+      .controls { box-shadow: 0 4px 16px #5d392409; }
+      .mode legend { font-size: 1rem; }
+      .choices.mode-choices { background: #f2ebe0; border-radius: 4px; }
+      .choice span, .toggle-label, .period-field, .summary-action { border-radius: 4px; }
+      .choice span:hover { background: #f9f1ea; }
+      .choice input:checked + span { background: #f4e4e7; border-color: #cb9eaa; }
+      .mode-choices .choice input:checked + span { background: #fffdf8; border-color: #e2d7c8; box-shadow: none; color: var(--green); }
+      .section { margin-top: 27px; padding-top: 22px; }
+      .section h2 { font-size: 1.52rem; letter-spacing: -.025em; }
+      .patent-card { padding: 17px; background: #f8f2e8; border-radius: 4px; }
+      .term-controls .toggle-label { background: #f7f0e6; border-color: var(--line); }
+      .term-controls .toggle-label:has(:checked) { background: var(--light); border-color: #d2adb6; }
+      select, input[type="number"], input[type="text"] { background: #fdfaf4; border-radius: 4px; color: #2e271f; }
+      .quantity-list { gap: 0; border-top: 1px solid var(--line); }
+      .quantity-row { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding-block: 9px; }
+      .quantity-row:has(:checked) { background: #f9eef0; border-color: var(--line); }
+      .summary { border-top: 4px solid var(--green); color: #2e271f; box-shadow: 0 12px 28px #56321d14; }
+      .summary h2 { font-size: 1.42rem; }
+      .estimate { margin-block: 19px 18px; }
+      .total { align-items: start; flex-direction: column; gap: 6px; }
+      .total strong { color: var(--green); font-size: clamp(2rem, 4vw, 3.08rem); }
+      .total span, .client-name, .estimate-review, .empty, .estimate-note { color: var(--muted); }
+      .breakdown { border: 0; border-block: 1px dashed #c4ac99; border-radius: 0; padding: 13px 0; background: transparent; }
+      .breakdown dl + dl, .adjustment-list .line-item:last-child { border-top: 1px dashed #c4ac99; }
+      .line-item dt { color: #382e26; }
+      .line-item small { color: var(--muted); }
+      .adjustment-list .line-item:last-child dd { color: var(--green); }
+      .summary-actions { gap: 7px; }
+      .summary-action { color: #683144; }
+      .share { background: var(--dark); color: #fffaf8; }
+      .share:not(:disabled):hover { background: #71364d; }
+      .copy { border-color: #d4b8bb; }
+      .copy:not(:disabled):hover, .reset:hover { background: #f5e8eb; }
+      :focus-visible, .choice input:focus-visible + span, .summary :focus-visible { outline-color: #9d4a62; }
+      .copy-status { color: #683144; }
+
+      @media (max-width: 780px) {
+        .wrap { width: min(620px, calc(100% - 28px)); }
+        .layout { grid-template-columns: 1fr; gap: 14px; }
+        .intro { padding-block: 30px 22px; }
+        .topbar .wrap { min-height: 58px; }
+        .controls, .summary { padding: 17px; }
+        .summary { border-top-width: 4px; }
+        .mobile-estimate { background: var(--dark); color: #fff7f1; box-shadow: 0 -3px 15px #42242626; }
+        .mobile-estimate:focus-visible { outline-color: #fff7f1; }
+      }
+    }
+
     @media print {
       @page { margin: 15mm; }
       :root, body { background: white; color: #182b23; }
