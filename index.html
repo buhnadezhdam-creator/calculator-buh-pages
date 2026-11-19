@@ -11,6 +11,12 @@
     // basePercent — надбавка за учёт НДС в процентах только от базового тарифа.
     const TARIFFS = {
       hourlyRate: 3000,
+      estimate: {
+        urgencyPercent: 30,
+        volumeDiscount: { minimumServices: 3, percent: 5 },
+        prepayment: { months: 6, percent: 10 },
+        vatPercent: 22
+      },
       baseScope: 'Учёт по выписке одного расчётного счёта, расчёт налогов, плановая отчётность и ответы на текущие вопросы.',
       vat: {
         none: { label: 'Без учёта НДС', basePercent: 0 },
@@ -72,13 +78,11 @@
         { id: 'online-acquiring', label: 'Интернет-эквайринг', unit: 'подключение', minutes: 30 },
         { id: 'marketplace-agreements', label: 'Договоры с маркетплейсами', unit: 'договор', minutes: 60 }
       ],
-      monthlyOptions: [
-        { label: 'Кадровое делопроизводство', minutes: 50 }
-      ],
+      monthlyOptions: [{ label: 'Кадровое делопроизводство', minutes: 50 }],
       oneOffServices: [
-        { label: 'Сдача отчётности', minutes: 60 },
-        { label: 'Консультация бухгалтера', minutes: 50 },
-        { label: 'Сверка с налоговой', minutes: 40 }
+        { id: 'reporting', label: 'Сдача отчётности', unit: 'отчёт', minutes: 60 },
+        { id: 'consultation', label: 'Консультация бухгалтера', unit: 'час', minutes: 60, step: 0.5 },
+        { id: 'reconciliation', label: 'Сверка с налоговой', unit: 'сверку', minutes: 40 }
       ]
     };
   </script>
@@ -207,7 +211,7 @@
       rotate: 45deg;
       pointer-events: none;
     }
-    select, input[type="number"] {
+    select, input[type="number"], input[type="text"] {
       min-width: 0;
       width: 100%;
       min-height: 46px;
@@ -223,10 +227,12 @@
     .error { color: #a12d25; }
     input[aria-invalid="true"] { border-color: #a12d25; }
     .section-intro { margin: -4px 0 12px; color: var(--muted); font-size: .86rem; line-height: 1.5; }
+    .period-field { max-width: 165px; }
+    .term-controls { display: grid; gap: 8px; margin-bottom: 14px; }
     .quantity-list { display: grid; gap: 8px; }
     .quantity-row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 5rem;
+      grid-template-columns: minmax(0, 1fr) minmax(4.5rem, 5.5rem);
       align-items: center;
       gap: 10px;
       padding: 7px 10px;
@@ -235,7 +241,31 @@
       font-size: .88rem;
       line-height: 1.35;
     }
-    .quantity-row label small { display: block; margin-top: 3px; color: var(--muted); font-size: .78rem; }
+    .quantity-choice, .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 44px;
+      cursor: pointer;
+    }
+    .quantity-choice small { display: block; margin-top: 3px; color: var(--muted); font-size: .78rem; }
+    .quantity-choice input, .toggle-label input {
+      flex: 0 0 auto;
+      width: 17px;
+      height: 17px;
+      margin: 0;
+      accent-color: var(--green);
+    }
+    .quantity-row:has(:checked), .toggle-label {
+      background: #f3f8f2;
+      border-color: #a5c6af;
+    }
+    .toggle-label {
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      font-size: .9rem;
+    }
     .option-list { display: grid; gap: 8px; }
     #monthly-options { margin-top: 12px; }
     .option {
@@ -264,6 +294,7 @@
       box-shadow: 0 12px 26px #18382b19;
     }
     .summary h2 { font-size: 1.12rem; letter-spacing: -.01em; }
+    .client-name { margin-top: 9px; color: #deece3; font-size: .9rem; overflow-wrap: anywhere; }
     .estimate { display: grid; gap: 9px; margin-block: 12px 17px; }
     .total {
       display: flex;
@@ -278,6 +309,8 @@
     .breakdown { padding: 13px; border: 1px solid #3d6053; border-radius: 12px; background: #204539; }
     .breakdown dl { display: grid; gap: 10px; margin: 0; }
     .breakdown dl + dl { margin-top: 11px; border-top: 1px solid #527166; padding-top: 11px; }
+    .adjustment-list .line-item:last-child { border-top: 1px solid #527166; padding-top: 9px; font-weight: 750; }
+    .adjustment-list .line-item:last-child dd { color: var(--mint); }
     .line-item { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: .85rem; line-height: 1.4; }
     .line-item dt { color: #deece3; overflow-wrap: anywhere; }
     .line-item small { display: block; margin-top: 2px; color: #c8ded1; font-size: .77rem; }
@@ -326,6 +359,11 @@
     }
     .mobile-estimate { display: none; }
 
+    @media screen and (min-width: 781px) and (min-height: 650px) {
+      .summary { display: flex; flex-direction: column; max-height: calc(100dvh - 40px); }
+      .summary > :not(.breakdown) { flex-shrink: 0; }
+      .breakdown { min-height: 100px; overflow-y: auto; }
+    }
     @media (max-width: 940px) and (min-width: 781px) {
       .parameters { grid-template-columns: 1fr; }
     }
@@ -370,6 +408,21 @@
       .option { gap: 7px; font-size: .82rem; }
       .option-price { font-size: .78rem; }
     }
+    @media print {
+      @page { margin: 15mm; }
+      :root, body { background: white; color: #182b23; }
+      .topbar, .intro, .controls, .summary-actions, .copy-status, .manual-copy, .mobile-estimate { display: none !important; }
+      .wrap { width: 100%; }
+      .layout { display: block; padding: 0; }
+      .summary { position: static; display: block; max-height: none; padding: 0; background: white; color: #182b23; box-shadow: none; }
+      .summary h2 { font-size: 20pt; margin-bottom: 3mm; }
+      .client-name, .estimate-note, .line-item dt, .line-item small, .total span { color: #30443b; }
+      .total strong, .adjustment-list .line-item:last-child dd { color: #182b23; }
+      .breakdown { overflow: visible; padding: 4mm 0; border: 0; background: white; }
+      .breakdown dl + dl, .adjustment-list .line-item:last-child { border-color: #aabbb0; }
+      .line-item { break-inside: avoid; }
+      .adjustment-list { break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
@@ -386,7 +439,7 @@
   <main class="wrap">
     <div class="intro">
       <h1>Калькулятор стоимости</h1>
-      <p>Укажите параметры бизнеса для расчёта сопровождения или выберите разовые услуги.</p>
+      <p>Отметьте нужные услуги и укажите количество для каждой.</p>
     </div>
 
     <div class="layout">
@@ -399,9 +452,48 @@
           </div>
         </fieldset>
 
+        <section class="section" aria-labelledby="terms-title">
+          <h2 id="terms-title">Условия расчёта</h2>
+          <div class="parameters">
+            <div class="regime-field">
+              <label class="field-label" for="client-name">Как к вам обращаться</label>
+              <input id="client-name" type="text" autocomplete="given-name" maxlength="120" placeholder="Имя">
+            </div>
+            <div>
+              <label class="field-label" for="urgency">Срочность</label>
+              <div class="select">
+                <select id="urgency">
+                  <option value="normal">Обычный срок</option>
+                  <option value="urgent" id="urgent-option">Срочно</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="field-label" for="billing-vat">НДС на услуги</label>
+              <div class="select">
+                <select id="billing-vat">
+                  <option value="none">Без НДС</option>
+                  <option value="with-vat" id="billing-vat-option"></option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <p class="hint" id="discount-hint"></p>
+        </section>
+
         <div id="monthly-fields">
           <section class="section" aria-labelledby="business-title">
             <h2 id="business-title">Ваш бизнес</h2>
+            <div class="term-controls">
+              <label class="toggle-label"><input id="base-service" type="checkbox" checked>Базовое сопровождение</label>
+              <div class="period-field">
+                <label class="field-label" for="months">Срок, мес.</label>
+                <input id="months" type="number" value="1" min="1" step="1" inputmode="numeric" aria-describedby="term-hint months-error">
+              </div>
+              <label class="toggle-label"><input id="prepayment" type="checkbox"><span id="prepayment-label"></span></label>
+              <p class="hint" id="term-hint">Срок применяется ко всем выбранным ежемесячным услугам.</p>
+              <p class="hint error" id="months-error" role="status" hidden>Укажите целое число месяцев от 1.</p>
+            </div>
             <div class="parameters">
               <fieldset>
                 <legend>Форма бизнеса</legend>
@@ -425,7 +517,7 @@
                 <div class="select"><select id="regime"></select></div>
               </div>
               <div>
-                <label class="field-label" for="vat-mode">Учёт НДС</label>
+                <label class="field-label" for="vat-mode">Учёт НДС клиента</label>
                 <div class="select"><select id="vat-mode"></select></div>
               </div>
             </div>
@@ -433,7 +525,7 @@
             <div class="patent-group" id="patent-group" hidden>
               <div class="quantity-list" id="patent-fields"></div>
               <p class="hint" id="patent-hint">Один патент входит в базовый тариф. Укажите количество сверх первого.</p>
-              <p class="hint error" id="patent-error" role="status" hidden>Введите целое число от 0.</p>
+              <p class="hint error" id="patent-error" role="status" hidden>Укажите количество патентов.</p>
             </div>
           </section>
 
@@ -441,21 +533,21 @@
             <h2 id="payroll-title">Зарплата и ГПХ</h2>
             <p class="section-intro">Укажите количество человек по каждой категории. ВКС учитывайте только в своей строке.</p>
             <div class="quantity-list" id="payroll-fields"></div>
-            <p class="hint error" id="payroll-error" role="status" hidden>Введите целое число от 0 в выделенных полях.</p>
+            <p class="hint error" id="payroll-error" role="status" hidden>Укажите целое количество от 1 в выделенных полях.</p>
           </section>
 
           <section class="section" aria-labelledby="primary-title">
             <h2 id="primary-title">Первичные документы</h2>
             <p class="section-intro" id="primary-hint">Укажите среднее количество за месяц. Каждый документ учитывайте один раз.</p>
             <div class="quantity-list" id="primary-fields"></div>
-            <p class="hint error" id="primary-error" role="status" hidden>Введите целое число от 0 в выделенных полях.</p>
+            <p class="hint error" id="primary-error" role="status" hidden>Укажите целое количество от 1 в выделенных полях.</p>
           </section>
 
           <section class="section" aria-labelledby="options-title">
             <h2 id="options-title">Ежемесячные допуслуги</h2>
             <p class="section-intro">Укажите количество. Первый расчётный счёт входит в базовый тариф.</p>
             <div class="quantity-list" id="procedure-fields"></div>
-            <p class="hint error" id="procedure-error" role="status" hidden>Введите целое число от 0 в выделенных полях.</p>
+            <p class="hint error" id="procedure-error" role="status" hidden>Укажите целое количество от 1 в выделенных полях.</p>
             <div class="option-list" id="monthly-options"></div>
           </section>
         </div>
@@ -463,33 +555,36 @@
         <section class="section" aria-labelledby="one-off-title">
           <h2 id="one-off-title">Разовые услуги</h2>
           <p class="section-intro">Для задач вне ежемесячного сопровождения.</p>
-          <div class="option-list" id="one-off-services"></div>
+          <div class="quantity-list" id="one-off-fields"></div>
+          <p class="hint error" id="one-off-error" role="status" hidden>Проверьте количество. Для консультации можно указать часы с шагом 0,5.</p>
         </section>
       </form>
 
       <aside class="summary" id="summary" aria-labelledby="summary-title" tabindex="-1">
         <h2 id="summary-title">Предварительный расчёт</h2>
+        <p class="client-name" id="estimate-client" hidden></p>
         <div class="estimate" aria-live="polite" aria-atomic="true">
-          <p class="total" id="monthly-total" hidden><strong id="monthly-price"></strong><span>в месяц</span></p>
-          <p class="total" id="one-off-total" hidden><strong id="one-off-price"></strong><span>разово</span></p>
+          <p class="total" id="estimate-total" hidden><span>Итого</span><strong id="total-price"></strong></p>
           <p class="empty" id="empty-estimate" hidden></p>
         </div>
         <div class="breakdown" id="breakdown" hidden>
           <dl id="monthly-breakdown" aria-label="Ежемесячные позиции" hidden></dl>
           <dl id="one-off-breakdown" aria-label="Разовые позиции" hidden></dl>
+          <dl id="adjustment-breakdown" class="adjustment-list" aria-label="Скидка, наценка, НДС и итог" hidden></dl>
         </div>
         <p class="estimate-note" id="hourly-note"></p>
         <div class="summary-actions">
           <button class="summary-action share" id="share" type="button" disabled>Поделиться расчётом</button>
           <button class="summary-action copy" id="copy" type="button" disabled><span class="copy-icon" aria-hidden="true"></span>Скопировать расчёт</button>
+          <button class="summary-action copy" id="print" type="button" disabled>Распечатать или сохранить PDF</button>
           <button class="summary-action reset" id="reset" type="button">Сбросить расчёт</button>
         </div>
         <p class="copy-status" id="copy-status" role="status"></p>
         <textarea class="manual-copy" id="manual-copy" aria-label="Текст расчёта для копирования" readonly hidden></textarea>
       </aside>
     </div>
-    <a class="mobile-estimate" href="#summary" id="mobile-estimate" hidden>
-      <span><strong id="mobile-monthly" hidden></strong><strong id="mobile-one-off" hidden></strong></span>
+    <a class="mobile-estimate" href="#summary" id="mobile-estimate">
+      <strong id="mobile-price"></strong>
       <span class="details-label">К расчёту</span>
     </a>
     <noscript>Для расчёта включите JavaScript в браузере.</noscript>
@@ -498,23 +593,24 @@
   <script>
     const byId = (id) => document.getElementById(id);
     const numberFormat = new Intl.NumberFormat('ru-RU');
-    const moneyFormat = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
+    const moneyFormat = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     // Денежные суммы считаются в копейках, чтобы итог совпадал с разбивкой.
     const priceForMinutes = (minutes) => Math.round(minutes * TARIFFS.hourlyRate * 100 / 60);
-    const money = (kopecks) => `${moneyFormat.format(kopecks / 100)}\u00a0₽`;
+    const money = (kopecks) => `${(kopecks % 100 === 0 ? numberFormat : moneyFormat).format(kopecks / 100)}\u00a0₽`;
     const priceFrom = (amount) => `от ${money(amount)}`;
 
     const calculator = byId('calculator');
     const regimeSelect = byId('regime');
     const vatSelect = byId('vat-mode');
     const turnoverSelect = byId('turnover');
+    const monthsInput = byId('months');
+    const prepayment = byId('prepayment');
+    const estimateRules = TARIFFS.estimate;
     const shareButton = byId('share');
     const copyButton = byId('copy');
+    const printButton = byId('print');
     const actionStatus = byId('copy-status');
     const manualCopy = byId('manual-copy');
-    const mobileEstimate = byId('mobile-estimate');
-    const mobileMonthly = byId('mobile-monthly');
-    const mobileOneOff = byId('mobile-one-off');
     const hourlyPrice = money(TARIFFS.hourlyRate * 100);
     const defaultBusiness = Object.keys(TARIFFS.base)[0];
     let currentBusiness = defaultBusiness;
@@ -522,11 +618,10 @@
     let selectedVatModes = {};
     let copyText = '';
     let transferRequest = 0;
-    let summaryVisible = false;
 
     function readQuantity(input) {
-      const count = input.value === '' ? 0 : input.valueAsNumber;
-      const valid = input.validity.valid && Number.isSafeInteger(count);
+      const count = input.valueAsNumber;
+      const valid = input.validity.valid && count > 0 && Number.isSafeInteger(count / Number(input.step));
       input.setAttribute('aria-invalid', String(!valid));
       return valid ? count : null;
     }
@@ -556,17 +651,21 @@
       return services.map((service) => {
         const row = document.createElement('div');
         row.className = 'quantity-row';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
         const input = document.createElement('input');
         input.id = `${group}-${service.id}`;
         input.type = 'number';
         input.min = '0';
-        input.step = '1';
-        input.inputMode = 'numeric';
+        input.step = service.step || 1;
+        input.inputMode = service.step ? 'decimal' : 'numeric';
         input.placeholder = '0';
+        input.setAttribute('aria-label', `Количество: ${service.label}${service.step ? ', часы' : ''}`);
         input.setAttribute('aria-describedby', `${group}-error`);
         const label = document.createElement('label');
-        label.htmlFor = input.id;
-        label.textContent = service.label;
+        label.className = 'quantity-choice';
+        const title = document.createElement('span');
+        title.textContent = service.label;
         const unitPrice = priceForMinutes(service.minutes);
         const unit = document.createElement('small');
         const unitText = `${money(unitPrice)} за ${service.unit || 'документ'}`;
@@ -574,10 +673,18 @@
         unit.textContent = servicePackage
           ? `До ${numberFormat.format(servicePackage.included)} чел. — ${money(priceForMinutes(servicePackage.minutes))}. Сверх пакета — ${unitText}.`
           : unitText;
-        label.append(unit);
+        title.append(unit);
+        label.append(checkbox, title);
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked && (!input.value || input.valueAsNumber === 0)) input.value = '1';
+        });
+        input.addEventListener('input', () => {
+          if (input.valueAsNumber === 0) checkbox.checked = false;
+          else if (input.value || input.validity.badInput) checkbox.checked = true;
+        });
         row.append(label, input);
         container.append(row);
-        return { input, service, unitPrice };
+        return { checkbox, input, service, unitPrice };
       });
     }
 
@@ -586,11 +693,15 @@
     const payrollFields = renderQuantityFields('payroll', TARIFFS.payroll);
     const primaryFields = renderQuantityFields('primary', TARIFFS.primary);
     const procedureFields = renderQuantityFields('procedure', TARIFFS.procedures);
+    const oneOffFields = renderQuantityFields('one-off', TARIFFS.oneOffServices);
 
     function readQuantities(fields) {
-      return fields.map(({ input, service, unitPrice }) => ({
-        service, unitPrice, count: readQuantity(input)
-      }));
+      const entries = [];
+      for (const { checkbox, input, service, unitPrice } of fields) {
+        if (checkbox.checked) entries.push({ service, unitPrice, count: readQuantity(input) });
+        else input.removeAttribute('aria-invalid');
+      }
+      return entries;
     }
 
     function priceQuantityItems(entries) {
@@ -598,7 +709,8 @@
         const label = service.label;
         const servicePackage = service.package;
         if (!servicePackage) {
-          return { label, detail: `${numberFormat.format(count)} × ${money(unitPrice)}`, price: count * unitPrice };
+          const quantity = `${numberFormat.format(count)}${service.step ? ' ч' : ''}`;
+          return { label, detail: `${quantity} × ${money(unitPrice)}`, price: Math.round(count * unitPrice) };
         }
 
         const packagePrice = priceForMinutes(servicePackage.minutes);
@@ -664,88 +776,134 @@
       }).join('\n');
     }
 
-    function getMonthlyItems(patentEntries, payrollEntries, primaryEntries, procedureEntries) {
+    function getMonthlyItems(baseSelected, entries, monthlyOptions, months) {
       const business = TARIFFS.base[currentBusiness];
       const regime = getRegime();
-      const vat = TARIFFS.vat[vatSelect.value];
-      const tracksVat = vatSelect.value !== 'none';
-      const payrollItems = priceQuantityItems(payrollEntries);
-      const primaryItems = priceQuantityItems(primaryEntries);
-      return [
-        {
+      const clientVat = TARIFFS.vat[vatSelect.value];
+      const items = [];
+      if (baseSelected) {
+        const basePrice = priceForMinutes(regime.minutes);
+        items.push({
           label: 'Базовое сопровождение',
-          detail: `${business.label}, ${regime.label}${regime.includesPatent ? ' · 1 патент в базе' : ''}`,
-          price: priceForMinutes(regime.minutes)
-        },
-        {
-          label: 'Учёт НДС',
-          detail: tracksVat ? vat.label : '',
-          price: priceForMinutes(regime.minutes * vat.basePercent / 100),
-          displayPrice: tracksVat ? '' : 'Без НДС'
-        },
-        ...priceQuantityItems(patentEntries),
-        ...(payrollItems.length ? payrollItems : [{ label: 'Зарплата и ГПХ', price: 0 }]),
-        ...(primaryItems.length ? primaryItems : [{ label: 'Первичные документы', price: 0 }]),
-        ...priceQuantityItems(procedureEntries),
-        ...getSelectedServices('monthly-options', TARIFFS.monthlyOptions)
+          detail: `${business.label}, ${regime.label}${regime.includesPatent ? ' · 1 патент в базе' : ''} · ${money(basePrice)}/мес.`,
+          price: basePrice
+        });
+        if (clientVat.basePercent) {
+          const vatPrice = priceForMinutes(regime.minutes * clientVat.basePercent / 100);
+          items.push({
+            label: 'Учёт НДС клиента',
+            detail: `${clientVat.label} · ${money(vatPrice)}/мес.`,
+            price: vatPrice,
+            partOfBase: true
+          });
+        }
+      }
+      items.push(...priceQuantityItems(entries), ...monthlyOptions);
+      return items.map((item) => ({
+        ...item,
+        detail: `${item.detail || money(item.price) + '/мес.'} · ${numberFormat.format(months)} мес.`,
+        price: item.price * months
+      }));
+    }
+
+    function getPriceBreakdown(items, hasMonthly, months) {
+      const subtotal = items.reduce((sum, item) => sum + item.price, 0);
+      const serviceCount = items.filter((item) => item.price > 0 && !item.partOfBase).length;
+      const volume = estimateRules.volumeDiscount;
+      const advance = estimateRules.prepayment;
+      const volumePercent = serviceCount >= volume.minimumServices ? volume.percent : 0;
+      const packagePercent = hasMonthly && prepayment.checked && months === advance.months ? advance.percent : 0;
+      const discountPercent = Math.max(volumePercent, packagePercent);
+      const discount = Math.round(subtotal * discountPercent / 100);
+      const discounted = subtotal - discount;
+      const urgencyPercent = byId('urgency').value === 'urgent' ? estimateRules.urgencyPercent : 0;
+      const urgency = Math.round(discounted * urgencyPercent / 100);
+      const beforeVat = discounted + urgency;
+      const vatPercent = byId('billing-vat').value === 'with-vat' ? estimateRules.vatPercent : 0;
+      const vat = Math.round(beforeVat * vatPercent / 100);
+      const total = beforeVat + vat;
+      const discountDetail = packagePercent >= volumePercent && packagePercent > 0
+        ? `${discountPercent}% за оплату сразу за ${advance.months} мес.`
+        : (discountPercent ? `${discountPercent}% за объём` : 'Без скидки');
+      const adjustments = [
+        { label: 'Сумма услуг', price: subtotal },
+        { label: 'Скидка', detail: discountDetail, price: 0 - discount },
+        { label: 'Наценка за срочность', detail: urgencyPercent ? `${urgencyPercent}%` : 'Обычный срок', price: urgency },
+        { label: 'НДС на услуги', detail: vatPercent ? `${vatPercent}%` : 'Без НДС', price: vat },
+        { label: 'Итого', price: total, displayPrice: priceFrom(total) }
       ];
+      return { total, adjustments };
     }
 
     function updateEstimate() {
       transferRequest += 1;
       const monthly = calculator.querySelector('[name="mode"]:checked').value === 'monthly';
       byId('monthly-fields').hidden = !monthly;
-      const includesPatent = monthly && getRegime().includesPatent;
+      const baseSelected = monthly && byId('base-service').checked;
+      vatSelect.disabled = !baseSelected || vatSelect.options.length === 1;
+      byId('base-scope').hidden = !baseSelected;
+      const includesPatent = baseSelected && getRegime().includesPatent;
       byId('patent-group').hidden = !includesPatent;
-      const patentEntries = includesPatent ? readQuantities(patentFields) : [];
-      const payrollEntries = monthly ? readQuantities(payrollFields) : [];
-      const primaryEntries = monthly ? readQuantities(primaryFields) : [];
-      const procedureEntries = monthly ? readQuantities(procedureFields) : [];
-      const invalidPatent = patentEntries.some(({ count }) => count === null);
-      const invalidPayroll = payrollEntries.some(({ count }) => count === null);
-      const invalidPrimary = primaryEntries.some(({ count }) => count === null);
-      const invalidProcedures = procedureEntries.some(({ count }) => count === null);
-      const invalidCount = invalidPatent || invalidPayroll || invalidPrimary || invalidProcedures;
-      byId('patent-error').hidden = !invalidPatent;
-      byId('payroll-error').hidden = !invalidPayroll;
-      byId('primary-error').hidden = !invalidPrimary;
-      byId('procedure-error').hidden = !invalidProcedures;
-
-      const monthlyItems = monthly && !invalidCount ? getMonthlyItems(patentEntries, payrollEntries, primaryEntries, procedureEntries) : [];
-      const oneOffItems = getSelectedServices('one-off-services', TARIFFS.oneOffServices);
-      const monthlyTotal = monthlyItems.reduce((sum, item) => sum + item.price, 0);
-      const oneOffTotal = oneOffItems.reduce((sum, item) => sum + item.price, 0);
-
-      byId('monthly-total').hidden = monthlyItems.length === 0;
-      byId('one-off-total').hidden = oneOffItems.length === 0;
-      byId('monthly-price').textContent = priceFrom(monthlyTotal);
-      byId('one-off-price').textContent = priceFrom(oneOffTotal);
-      mobileMonthly.hidden = monthlyItems.length === 0;
-      mobileOneOff.hidden = oneOffItems.length === 0;
-      mobileMonthly.textContent = `${priceFrom(monthlyTotal)} / мес.`;
-      mobileOneOff.textContent = `${priceFrom(oneOffTotal)} разово`;
-      mobileEstimate.hidden = summaryVisible || (mobileMonthly.hidden && mobileOneOff.hidden);
-      const empty = byId('empty-estimate');
-      empty.hidden = !invalidCount && (monthly || oneOffItems.length > 0);
-      empty.textContent = invalidCount ? 'Проверьте выделенные поля для ежемесячного расчёта.' : 'Выберите хотя бы одну разовую услугу.';
-      byId('breakdown').hidden = monthlyItems.length === 0 && oneOffItems.length === 0;
-      renderBreakdown('monthly-breakdown', monthlyItems);
-      renderBreakdown('one-off-breakdown', oneOffItems);
-
-      const message = ['Предварительный расчёт бухгалтерских услуг', `Ставка — ${hourlyPrice}/ч. Демонстрационные нормативы.`];
-      if (monthlyItems.length) {
-        message.push('', `Сопровождение — ${priceFrom(monthlyTotal)} в месяц`);
-        if (turnoverSelect.value) {
-          message.push(`Оборот за месяц (справочно) — ${turnoverSelect.selectedOptions[0].textContent}`);
-        }
-        message.push(`В базе — ${TARIFFS.baseScope}`, itemizedText(monthlyItems));
+      const groups = {
+        patent: includesPatent ? readQuantities(patentFields) : [],
+        payroll: monthly ? readQuantities(payrollFields) : [],
+        primary: monthly ? readQuantities(primaryFields) : [],
+        procedure: monthly ? readQuantities(procedureFields) : [],
+        'one-off': readQuantities(oneOffFields)
+      };
+      const monthlyEntries = [...groups.patent, ...groups.payroll, ...groups.primary, ...groups.procedure];
+      const monthlyOptions = monthly ? getSelectedServices('monthly-options', TARIFFS.monthlyOptions) : [];
+      const hasMonthly = baseSelected || monthlyEntries.length > 0 || monthlyOptions.length > 0;
+      const months = hasMonthly ? readQuantity(monthsInput) : 1;
+      if (!hasMonthly) monthsInput.removeAttribute('aria-invalid');
+      let invalid = months === null;
+      byId('months-error').hidden = !invalid;
+      for (const [group, entries] of Object.entries(groups)) {
+        const invalidGroup = entries.some(({ count }) => count === null);
+        byId(`${group}-error`).hidden = !invalidGroup;
+        invalid = invalid || invalidGroup;
       }
-      if (oneOffItems.length) message.push('', `Разовые услуги — ${priceFrom(oneOffTotal)}`, itemizedText(oneOffItems));
-      message.push('', 'Окончательная стоимость зависит от состава и объёма работ.');
-      copyText = message.join('\n');
-      const transferDisabled = invalidCount || (!monthly && oneOffItems.length === 0);
-      copyButton.disabled = transferDisabled;
-      shareButton.disabled = transferDisabled;
+
+      const monthlyItems = hasMonthly && !invalid ? getMonthlyItems(baseSelected, monthlyEntries, monthlyOptions, months) : [];
+      const oneOffItems = invalid ? [] : priceQuantityItems(groups['one-off']);
+      const items = [...monthlyItems, ...oneOffItems];
+      const { total, adjustments } = getPriceBreakdown(items, hasMonthly, months);
+      const invalidPrice = adjustments.some((item) => !Number.isSafeInteger(item.price));
+      const ready = !invalid && !invalidPrice && items.length > 0;
+      const client = byId('client-name').value.trim();
+      const clientLine = client ? `Клиент — ${client}` : '';
+      byId('estimate-client').textContent = clientLine;
+      byId('estimate-client').hidden = !client;
+      byId('estimate-total').hidden = !ready;
+      byId('total-price').textContent = ready ? priceFrom(total) : '';
+      const empty = byId('empty-estimate');
+      empty.hidden = ready;
+      empty.textContent = invalid ? 'Проверьте количество в выделенных полях.'
+        : (invalidPrice ? 'Уменьшите количества в расчёте.' : 'Выберите хотя бы одну услугу.');
+      byId('mobile-price').textContent = ready ? `Итого ${priceFrom(total)}` : empty.textContent;
+      byId('breakdown').hidden = !ready;
+      renderBreakdown('monthly-breakdown', ready ? monthlyItems : []);
+      renderBreakdown('one-off-breakdown', ready ? oneOffItems : []);
+      renderBreakdown('adjustment-breakdown', ready ? adjustments : []);
+
+      copyText = '';
+      if (ready) {
+        const message = ['Предварительный расчёт бухгалтерских услуг'];
+        if (clientLine) message.push(clientLine);
+        message.push(`Ставка — ${hourlyPrice}/ч. Демонстрационные нормативы.`);
+        if (monthlyItems.length) {
+          message.push('', `Ежемесячные услуги · ${numberFormat.format(months)} мес.`);
+          if (turnoverSelect.value) message.push(`Оборот за месяц (справочно) — ${turnoverSelect.selectedOptions[0].textContent}`);
+          if (baseSelected) message.push(`В базе — ${TARIFFS.baseScope}`);
+          message.push(itemizedText(monthlyItems));
+        }
+        if (oneOffItems.length) message.push('', 'Разовые услуги', itemizedText(oneOffItems));
+        message.push('', itemizedText(adjustments), '', 'Окончательная стоимость зависит от состава и объёма работ.');
+        copyText = message.join('\n');
+      }
+      copyButton.disabled = !ready;
+      shareButton.disabled = !ready;
+      printButton.disabled = !ready;
       actionStatus.textContent = '';
       manualCopy.hidden = true;
     }
@@ -766,10 +924,15 @@
 
     byId('base-scope').textContent = `В базе — ${TARIFFS.baseScope}`;
     byId('hourly-note').textContent = `Ставка — ${hourlyPrice}/ч. Окончательная стоимость зависит от состава и объёма работ.`;
+    byId('urgent-option').textContent = `Срочно (+${estimateRules.urgencyPercent}%)`;
+    byId('billing-vat-option').textContent = `НДС ${estimateRules.vatPercent}% сверху`;
+    const volume = estimateRules.volumeDiscount;
+    const advance = estimateRules.prepayment;
+    byId('discount-hint').textContent = `Скидка ${volume.percent}% при выборе от ${volume.minimumServices} услуг. Действует большая из двух скидок.`;
+    byId('prepayment-label').textContent = `Оплата сразу за ${advance.months} мес. (скидка ${advance.percent}%)`;
     renderRegimes();
     renderVatModes();
     renderServiceOptions('monthly-options', TARIFFS.monthlyOptions, ' / мес.');
-    renderServiceOptions('one-off-services', TARIFFS.oneOffServices, '');
 
     calculator.addEventListener('change', (event) => {
       if (event.target.name === 'business') {
@@ -782,10 +945,12 @@
         renderVatModes();
       }
       if (event.target === vatSelect) selectedVatModes[vatSelectionKey()] = vatSelect.value;
+      if (event.target === prepayment && prepayment.checked) monthsInput.value = advance.months;
       updateEstimate();
     });
     calculator.addEventListener('input', (event) => {
-      if (event.target.type === 'number') updateEstimate();
+      if (event.target === monthsInput && monthsInput.valueAsNumber !== advance.months) prepayment.checked = false;
+      if (event.target.type === 'number' || event.target.type === 'text') updateEstimate();
     });
     calculator.addEventListener('submit', (event) => event.preventDefault());
 
@@ -837,6 +1002,7 @@
     copyButton.addEventListener('click', () => {
       return copyEstimate(copyButton, 'Расчёт скопирован. Его можно вставить в сообщение.');
     });
+    printButton.addEventListener('click', () => window.print());
 
     shareButton.addEventListener('click', async () => {
       const data = { text: copyText };
@@ -858,13 +1024,6 @@
     });
 
     updateEstimate();
-    if ('IntersectionObserver' in window) {
-      const observer = new IntersectionObserver(([entry]) => {
-        summaryVisible = entry.isIntersecting;
-        mobileEstimate.hidden = summaryVisible || (mobileMonthly.hidden && mobileOneOff.hidden);
-      }, { threshold: .75 });
-      observer.observe(byId('summary-title'));
-    }
   </script>
 </body>
 </html>
