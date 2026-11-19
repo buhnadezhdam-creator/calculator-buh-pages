@@ -7,7 +7,7 @@
   <title>Калькулятор стоимости бухгалтерского обслуживания</title>
   <script>
     // СТАВКА И ДЕМОНСТРАЦИОННЫЕ НОРМАТИВЫ.
-    // Ставка — рубли в час. Нормативы — минуты на месяц или на одну указанную единицу.
+    // hourlyRate — рубли в час, minutes — минуты на месяц или единицу, price — фиксированный тариф в рублях.
     // basePercent — надбавка за учёт НДС в процентах только от базового тарифа.
     const TARIFFS = {
       hourlyRate: 3000,
@@ -31,15 +31,7 @@
             usnNet: { label: 'УСН «Доходы минус расходы»', minutes: 252, vatModes: ['none', 'reduced', 'standard'] },
             ausnIncome: { label: 'АУСН «Доходы»', minutes: 180, vatModes: ['none'] },
             ausnNet: { label: 'АУСН «Доходы минус расходы»', minutes: 252, vatModes: ['none'] },
-            osno: { label: 'ОСНО', minutes: 324, vatModes: ['standard', 'none'] },
-            patent: { label: 'Патент', minutes: 216, vatModes: ['none'], includesPatent: true },
-            usnIncomePatent: { label: 'УСН «Доходы» + патент', minutes: 270, vatModes: ['none', 'reduced', 'standard'], includesPatent: true },
-            usnNetPatent: {
-              label: 'УСН «Доходы минус расходы» + патент',
-              optionLabel: 'Патент + УСН «Доходы − расходы»',
-              minutes: 342, vatModes: ['none', 'reduced', 'standard'], includesPatent: true
-            },
-            osnoPatent: { label: 'ОСНО + патент', minutes: 396, vatModes: ['standard', 'none'], includesPatent: true }
+            osno: { label: 'ОСНО', minutes: 324, vatModes: ['standard', 'none'] }
           }
         },
         ooo: {
@@ -53,22 +45,27 @@
           }
         }
       },
-      // В базовом тарифе режима с патентом учтён один патент; минуты здесь — на каждый сверх первого.
-      additionalPatent: { id: 'additional', label: 'Дополнительные патенты', unit: 'патент', minutes: 90 },
-      // Зарплата и ГПХ: минуты в месяц на человека; у сотрудников РФ — сверх пакета.
+      patent: {
+        standalone: { label: 'Патент', minutes: 216, vatModes: ['none'], includesPatent: true },
+        combinedMinutes: { usnIncome: 270, usnNet: 342, osno: 396 },
+        included: 1,
+        extraMinutes: 90
+      },
+      // Тарифы зарплаты включают кадровое делопроизводство. Лимит калькулятора считается по штатным сотрудникам.
+      payrollQuoteAbove: 10,
       payroll: [
-        { id: 'russian-employees', label: 'Сотрудники — граждане РФ', unit: 'сотрудника', minutes: 15, package: { included: 2, minutes: 60 } },
-        { id: 'foreign-with-patent', label: 'Иностранные сотрудники с патентом', unit: 'сотрудника', minutes: 30 },
-        { id: 'foreign-without-patent', label: 'Иностранные сотрудники без патента', unit: 'сотрудника', minutes: 22.5 },
-        { id: 'highly-qualified', label: 'Высококвалифицированные специалисты (ВКС)', unit: 'специалиста', minutes: 60 },
-        { id: 'civil-contractors', label: 'Исполнители по ГПХ (физлица)', unit: 'исполнителя', minutes: 30 }
+        { id: 'russian-employees', label: 'Сотрудники — граждане РФ', unit: 'сотрудника', employee: true, price: 2000, package: { included: 1, price: 5500 } },
+        { id: 'foreign-employees', label: 'Иностранные сотрудники', unit: 'сотрудника', employee: true, price: 3000 },
+        { id: 'highly-qualified', label: 'Высококвалифицированные специалисты (ВКС)', unit: 'специалиста', employee: true, price: 3000 },
+        { id: 'civil-contractors', label: 'Исполнители по ГПХ (физлица)', unit: 'исполнителя', price: 2000 }
       ],
+      documentLines: { included: 10, extraPrice: 10 },
       primary: [
-        { id: 'payments', label: 'Подготовить платёжные поручения', minutes: 6 },
-        { id: 'receipts', label: 'Внести готовые документы поступления', minutes: 9 },
-        { id: 'sales-entry', label: 'Внести готовые документы реализации', minutes: 9 },
-        { id: 'sales-prep', label: 'Оформить документы реализации', minutes: 15 },
-        { id: 'expense-reports', label: 'Обработать авансовые отчёты', minutes: 15 }
+        { id: 'payments', label: 'Подготовить платёжные поручения', unit: 'поручение', price: 500 },
+        { id: 'receipts', label: 'Внести готовые документы поступления', price: 450, perLine: true },
+        { id: 'sales-entry', label: 'Внести готовые документы реализации', price: 450, perLine: true },
+        { id: 'sales-prep', label: 'Оформить документы реализации', price: 450, perLine: true },
+        { id: 'expense-reports', label: 'Обработать авансовые отчёты', price: 750, perLine: true }
       ],
       // Минуты в месяц на каждый дополнительный счёт, кассу, подключение или договор.
       procedures: [
@@ -78,7 +75,6 @@
         { id: 'online-acquiring', label: 'Интернет-эквайринг', unit: 'подключение', minutes: 30 },
         { id: 'marketplace-agreements', label: 'Договоры с маркетплейсами', unit: 'договор', minutes: 60 }
       ],
-      monthlyOptions: [{ label: 'Кадровое делопроизводство', minutes: 50 }],
       oneOffServices: [
         { id: 'reporting', label: 'Сдача отчётности', unit: 'отчёт', minutes: 60 },
         { id: 'consultation', label: 'Консультация бухгалтера', unit: 'час', minutes: 60, step: 0.5 },
@@ -195,7 +191,13 @@
       gap: 18px;
     }
     .regime-field { grid-column: 1 / -1; }
-    .patent-group { margin-top: 14px; }
+    .patent-card {
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #f6f8f3;
+    }
+    .patent-card .parameters { gap: 10px; }
     .section { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
     .section h2 { margin-bottom: 12px; font-size: 1.04rem; }
     .select { position: relative; }
@@ -227,8 +229,21 @@
     .error { color: #a12d25; }
     input[aria-invalid="true"] { border-color: #a12d25; }
     .section-intro { margin: -4px 0 12px; color: var(--muted); font-size: .86rem; line-height: 1.5; }
-    .period-field { max-width: 165px; }
-    .term-controls { display: grid; gap: 8px; margin-bottom: 14px; }
+    .term-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(62px, .55fr) minmax(0, 1.25fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .term-controls > .hint { grid-column: 1 / -1; margin-top: 0; }
+    .period-field {
+      min-width: 0;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+    }
+    .period-field .field-label { margin-bottom: 4px; font-size: .78rem; }
+    .period-field input { padding: 4px; text-align: center; }
     .quantity-list { display: grid; gap: 8px; }
     .quantity-row {
       display: grid;
@@ -249,6 +264,17 @@
       cursor: pointer;
     }
     .quantity-choice small { display: block; margin-top: 3px; color: var(--muted); font-size: .78rem; }
+    .line-count {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(4.5rem, 5.5rem);
+      align-items: center;
+      gap: 10px;
+      padding-top: 7px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .81rem;
+    }
     .quantity-choice input, .toggle-label input {
       flex: 0 0 auto;
       width: 17px;
@@ -261,30 +287,12 @@
       border-color: #a5c6af;
     }
     .toggle-label {
+      min-width: 0;
       padding: 7px 10px;
       border: 1px solid var(--line);
       border-radius: 9px;
       font-size: .9rem;
     }
-    .option-list { display: grid; gap: 8px; }
-    #monthly-options { margin-top: 12px; }
-    .option {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 10px;
-      min-height: 47px;
-      padding: 9px 11px;
-      border: 1px solid var(--line);
-      border-radius: 9px;
-      font-size: .88rem;
-      cursor: pointer;
-    }
-    .option:hover, .option:has(:checked) { background: #f3f8f2; }
-    .option:has(:checked) { border-color: #a5c6af; }
-    .option input { width: 17px; height: 17px; margin: 0; accent-color: var(--green); }
-    .option-price { color: var(--green); font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
-
     .summary {
       position: sticky;
       top: 20px;
@@ -294,7 +302,8 @@
       box-shadow: 0 12px 26px #18382b19;
     }
     .summary h2 { font-size: 1.12rem; letter-spacing: -.01em; }
-    .client-name { margin-top: 9px; color: #deece3; font-size: .9rem; overflow-wrap: anywhere; }
+    .client-name, .estimate-review { margin-top: 9px; color: #deece3; font-size: .9rem; overflow-wrap: anywhere; }
+    .estimate-review { margin-bottom: 10px; line-height: 1.45; }
     .estimate { display: grid; gap: 9px; margin-block: 12px 17px; }
     .total {
       display: flex;
@@ -405,8 +414,16 @@
       .brand-icon { width: 28px; height: 28px; }
       .choices.mode-choices { gap: 3px; }
       .mode-choices .choice span { font-size: .8rem; }
-      .option { gap: 7px; font-size: .82rem; }
-      .option-price { font-size: .78rem; }
+      .term-controls .toggle-label {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 5px;
+        padding: 6px;
+        font-size: .74rem;
+        overflow-wrap: anywhere;
+      }
+      .period-field { padding-inline: 5px; }
     }
     @media print {
       @page { margin: 15mm; }
@@ -416,7 +433,7 @@
       .layout { display: block; padding: 0; }
       .summary { position: static; display: block; max-height: none; padding: 0; background: white; color: #182b23; box-shadow: none; }
       .summary h2 { font-size: 20pt; margin-bottom: 3mm; }
-      .client-name, .estimate-note, .line-item dt, .line-item small, .total span { color: #30443b; }
+      .client-name, .estimate-review, .estimate-note, .line-item dt, .line-item small, .total span { color: #30443b; }
       .total strong, .adjustment-list .line-item:last-child dd { color: #182b23; }
       .breakdown { overflow: visible; padding: 4mm 0; border: 0; background: white; }
       .breakdown dl + dl, .adjustment-list .line-item:last-child { border-color: #aabbb0; }
@@ -485,12 +502,13 @@
           <section class="section" aria-labelledby="business-title">
             <h2 id="business-title">Ваш бизнес</h2>
             <div class="term-controls">
-              <label class="toggle-label"><input id="base-service" type="checkbox" checked>Базовое сопровождение</label>
+              <label class="toggle-label"><input id="base-service" type="checkbox" aria-describedby="base-scope" checked><span>Базовое сопровождение</span></label>
               <div class="period-field">
                 <label class="field-label" for="months">Срок, мес.</label>
                 <input id="months" type="number" value="1" min="1" step="1" inputmode="numeric" aria-describedby="term-hint months-error">
               </div>
               <label class="toggle-label"><input id="prepayment" type="checkbox"><span id="prepayment-label"></span></label>
+              <p class="hint" id="base-scope"></p>
               <p class="hint" id="term-hint">Срок применяется ко всем выбранным ежемесячным услугам.</p>
               <p class="hint error" id="months-error" role="status" hidden>Укажите целое число месяцев от 1.</p>
             </div>
@@ -521,26 +539,43 @@
                 <div class="select"><select id="vat-mode"></select></div>
               </div>
             </div>
-            <p class="hint" id="base-scope"></p>
-            <div class="patent-group" id="patent-group" hidden>
-              <div class="quantity-list" id="patent-fields"></div>
-              <p class="hint" id="patent-hint">Один патент входит в базовый тариф. Укажите количество сверх первого.</p>
-              <p class="hint error" id="patent-error" role="status" hidden>Укажите количество патентов.</p>
+          </section>
+
+          <section class="section patent-card" id="patent-group" aria-labelledby="patent-title" hidden>
+            <h2 id="patent-title">Патент</h2>
+            <div class="parameters">
+              <div>
+                <label class="field-label" for="patent-mode">Применение патента</label>
+                <div class="select">
+                  <select id="patent-mode">
+                    <option value="none">Без патента</option>
+                    <option value="combined">Совмещаю с режимом</option>
+                    <option value="standalone">Только патент</option>
+                  </select>
+                </div>
+              </div>
+              <div id="patent-count-field" hidden>
+                <label class="field-label" for="patent-count">Всего патентов</label>
+                <input id="patent-count" type="number" value="1" min="1" step="1" inputmode="numeric" aria-describedby="patent-hint patent-error">
+              </div>
             </div>
+            <p class="hint" id="patent-hint" hidden></p>
+            <p class="hint error" id="patent-error" role="status" hidden>Укажите целое количество патентов от 1.</p>
           </section>
 
           <section class="section" aria-labelledby="payroll-title">
-            <h2 id="payroll-title">Зарплата и ГПХ</h2>
-            <p class="section-intro">Укажите количество человек по каждой категории. ВКС учитывайте только в своей строке.</p>
+            <h2 id="payroll-title">Зарплата, кадры и ГПХ</h2>
+            <p class="section-intro">В расчёт зарплаты входит кадровое делопроизводство. ВКС укажите отдельной строкой.</p>
             <div class="quantity-list" id="payroll-fields"></div>
             <p class="hint error" id="payroll-error" role="status" hidden>Укажите целое количество от 1 в выделенных полях.</p>
+            <p class="hint" id="payroll-limit"></p>
           </section>
 
           <section class="section" aria-labelledby="primary-title">
             <h2 id="primary-title">Первичные документы</h2>
             <p class="section-intro" id="primary-hint">Укажите среднее количество за месяц. Каждый документ учитывайте один раз.</p>
             <div class="quantity-list" id="primary-fields"></div>
-            <p class="hint error" id="primary-error" role="status" hidden>Укажите целое количество от 1 в выделенных полях.</p>
+            <p class="hint error" id="primary-error" role="status" hidden>Проверьте количество документов и строк в выделенных полях.</p>
           </section>
 
           <section class="section" aria-labelledby="options-title">
@@ -548,7 +583,6 @@
             <p class="section-intro">Укажите количество. Первый расчётный счёт входит в базовый тариф.</p>
             <div class="quantity-list" id="procedure-fields"></div>
             <p class="hint error" id="procedure-error" role="status" hidden>Укажите целое количество от 1 в выделенных полях.</p>
-            <div class="option-list" id="monthly-options"></div>
           </section>
         </div>
 
@@ -567,6 +601,7 @@
           <p class="total" id="estimate-total" hidden><span>Итого</span><strong id="total-price"></strong></p>
           <p class="empty" id="empty-estimate" hidden></p>
         </div>
+        <p class="estimate-review" id="estimate-review" hidden></p>
         <div class="breakdown" id="breakdown" hidden>
           <dl id="monthly-breakdown" aria-label="Ежемесячные позиции" hidden></dl>
           <dl id="one-off-breakdown" aria-label="Разовые позиции" hidden></dl>
@@ -601,11 +636,17 @@
 
     const calculator = byId('calculator');
     const regimeSelect = byId('regime');
+    const patentMode = byId('patent-mode');
+    const patentCountInput = byId('patent-count');
     const vatSelect = byId('vat-mode');
     const turnoverSelect = byId('turnover');
     const monthsInput = byId('months');
     const prepayment = byId('prepayment');
     const estimateRules = TARIFFS.estimate;
+    const lineRules = TARIFFS.documentLines;
+    const quoteByAgreement = 'По согласованию';
+    const getUnitPrice = (service) => service.price === undefined ? priceForMinutes(service.minutes) : Math.round(service.price * 100);
+    const extraLinePrice = getUnitPrice({ price: lineRules.extraPrice });
     const shareButton = byId('share');
     const copyButton = byId('copy');
     const printButton = byId('print');
@@ -619,26 +660,42 @@
     let copyText = '';
     let transferRequest = 0;
 
-    function readQuantity(input) {
-      const count = input.valueAsNumber;
-      const valid = input.validity.valid && count > 0 && Number.isSafeInteger(count / Number(input.step));
+    function readQuantity(input, allowZero = false) {
+      const count = allowZero && input.value === '' ? 0 : input.valueAsNumber;
+      const minimum = allowZero ? 0 : Number(input.step);
+      const valid = input.validity.valid && count >= minimum && Number.isSafeInteger(count / Number(input.step));
       input.setAttribute('aria-invalid', String(!valid));
       return valid ? count : null;
     }
 
-    const getRegime = () => TARIFFS.base[currentBusiness].regimes[regimeSelect.value];
-    const vatSelectionKey = () => `${currentBusiness}:${regimeSelect.value}`;
+    function getRegime() {
+      const regime = TARIFFS.base[currentBusiness].regimes[regimeSelect.value];
+      if (currentBusiness !== 'ip') return regime;
+      if (patentMode.value === 'standalone') return TARIFFS.patent.standalone;
+      const combinedMinutes = TARIFFS.patent.combinedMinutes[regimeSelect.value];
+      if (patentMode.value === 'combined' && combinedMinutes !== undefined) {
+        return { ...regime, label: `${regime.label} + патент`, minutes: combinedMinutes, includesPatent: true };
+      }
+      return regime;
+    }
+
+    const vatSelectionKey = () => `${currentBusiness}:${regimeSelect.value}:${currentBusiness === 'ip' ? patentMode.value : 'none'}`;
 
     function renderRegimes(previousRegime = regimeSelect.value) {
       const regimes = TARIFFS.base[currentBusiness].regimes;
       const nextRegime = selectedRegimes[currentBusiness] || previousRegime;
-      const options = Object.entries(regimes).map(([value, regime]) => new Option(regime.optionLabel || regime.label, value));
+      const options = Object.entries(regimes).map(([value, regime]) => new Option(regime.label, value));
       regimeSelect.replaceChildren(...options);
       if (Object.hasOwn(regimes, nextRegime)) regimeSelect.value = nextRegime;
       selectedRegimes[currentBusiness] = regimeSelect.value;
     }
 
     function renderVatModes() {
+      const combinedOption = patentMode.querySelector('[value="combined"]');
+      combinedOption.disabled = !Object.hasOwn(TARIFFS.patent.combinedMinutes, regimeSelect.value);
+      if (combinedOption.disabled && patentMode.value === 'combined' && currentBusiness === 'ip') {
+        patentMode.value = 'none';
+      }
       const modes = getRegime().vatModes;
       const saved = selectedVatModes[vatSelectionKey()];
       vatSelect.replaceChildren(...modes.map((mode) => new Option(TARIFFS.vat[mode].label, mode)));
@@ -666,13 +723,14 @@
         label.className = 'quantity-choice';
         const title = document.createElement('span');
         title.textContent = service.label;
-        const unitPrice = priceForMinutes(service.minutes);
+        const unitPrice = getUnitPrice(service);
         const unit = document.createElement('small');
         const unitText = `${money(unitPrice)} за ${service.unit || 'документ'}`;
         const servicePackage = service.package;
         unit.textContent = servicePackage
-          ? `До ${numberFormat.format(servicePackage.included)} чел. — ${money(priceForMinutes(servicePackage.minutes))}. Сверх пакета — ${unitText}.`
+          ? `${money(getUnitPrice(servicePackage))} за первого, далее — ${unitText}.`
           : unitText;
+        if (service.perLine) unit.textContent = `${unitText} до ${lineRules.included} строк · ${money(extraLinePrice)} за строку сверх лимита`;
         title.append(unit);
         label.append(checkbox, title);
         checkbox.addEventListener('change', () => {
@@ -683,13 +741,30 @@
           else if (input.value || input.validity.badInput) checkbox.checked = true;
         });
         row.append(label, input);
+        let linesInput;
+        if (service.perLine) {
+          const linesLabel = document.createElement('label');
+          linesLabel.className = 'line-count';
+          linesLabel.hidden = true;
+          const linesTitle = document.createElement('span');
+          linesTitle.textContent = `Строк сверх лимита, всего`;
+          linesInput = document.createElement('input');
+          linesInput.id = `${input.id}-extra-lines`;
+          linesInput.type = 'number';
+          linesInput.min = '0';
+          linesInput.step = '1';
+          linesInput.inputMode = 'numeric';
+          linesInput.placeholder = '0';
+          linesInput.setAttribute('aria-label', `Строк сверх лимита: ${service.label}`);
+          linesInput.setAttribute('aria-describedby', `${group}-error`);
+          linesLabel.append(linesTitle, linesInput);
+          row.append(linesLabel);
+        }
         container.append(row);
-        return { checkbox, input, service, unitPrice };
+        return { checkbox, input, service, unitPrice, linesInput };
       });
     }
 
-    const patentFields = renderQuantityFields('patent', [TARIFFS.additionalPatent]);
-    patentFields[0].input.setAttribute('aria-describedby', 'patent-hint patent-error');
     const payrollFields = renderQuantityFields('payroll', TARIFFS.payroll);
     const primaryFields = renderQuantityFields('primary', TARIFFS.primary);
     const procedureFields = renderQuantityFields('procedure', TARIFFS.procedures);
@@ -697,55 +772,42 @@
 
     function readQuantities(fields) {
       const entries = [];
-      for (const { checkbox, input, service, unitPrice } of fields) {
-        if (checkbox.checked) entries.push({ service, unitPrice, count: readQuantity(input) });
-        else input.removeAttribute('aria-invalid');
+      for (const { checkbox, input, service, unitPrice, linesInput } of fields) {
+        if (linesInput) linesInput.parentElement.hidden = !checkbox.checked;
+        if (!checkbox.checked) {
+          input.removeAttribute('aria-invalid');
+          linesInput?.removeAttribute('aria-invalid');
+          continue;
+        }
+        const count = readQuantity(input);
+        const extraLines = linesInput ? readQuantity(linesInput, true) : 0;
+        entries.push({ service, unitPrice, count: extraLines === null ? null : count, extraLines });
       }
       return entries;
     }
 
-    function priceQuantityItems(entries) {
-      return entries.filter(({ count }) => count > 0).map(({ service, count, unitPrice }) => {
+    function priceQuantityItems(entries, employeesByAgreement = false) {
+      return entries.filter(({ count }) => count > 0).map(({ service, count, unitPrice, extraLines }) => {
         const label = service.label;
+        if (service.employee && employeesByAgreement) {
+          return { label, detail: `${numberFormat.format(count)} чел.`, price: null, displayPrice: quoteByAgreement };
+        }
         const servicePackage = service.package;
         if (!servicePackage) {
-          const quantity = `${numberFormat.format(count)}${service.step ? ' ч' : ''}`;
-          return { label, detail: `${quantity} × ${money(unitPrice)}`, price: Math.round(count * unitPrice) };
+          const unit = service.step ? ' ч' : (service.perLine ? ' док.' : '');
+          const quantity = `${numberFormat.format(count)}${unit}`;
+          const lineDetail = extraLines ? ` + ${numberFormat.format(extraLines)} строк сверх лимита × ${money(extraLinePrice)}` : '';
+          return { label, detail: `${quantity} × ${money(unitPrice)}${lineDetail}`, price: Math.round(count * unitPrice) + extraLines * extraLinePrice };
         }
 
-        const packagePrice = priceForMinutes(servicePackage.minutes);
+        const packagePrice = getUnitPrice(servicePackage);
         const extraCount = Math.max(0, count - servicePackage.included);
         const extraDetail = extraCount > 0 ? ` + ${numberFormat.format(extraCount)} × ${money(unitPrice)}` : '';
         return {
           label,
-          detail: `${numberFormat.format(count)} чел. · пакет ${money(packagePrice)}${extraDetail}`,
+          detail: `${numberFormat.format(count)} чел. · ${money(packagePrice)} за первого${extraDetail}`,
           price: packagePrice + extraCount * unitPrice
         };
-      });
-    }
-
-    function renderServiceOptions(containerId, services, suffix) {
-      const options = services.map((service, index) => {
-        const label = document.createElement('label');
-        label.className = 'option';
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = index;
-        const title = document.createElement('span');
-        title.textContent = service.label;
-        const price = document.createElement('span');
-        price.className = 'option-price';
-        price.textContent = `${money(priceForMinutes(service.minutes))}${suffix}`;
-        label.append(checkbox, title, price);
-        return label;
-      });
-      byId(containerId).replaceChildren(...options);
-    }
-
-    function getSelectedServices(containerId, services) {
-      return Array.from(byId(containerId).querySelectorAll('input:checked'), (input) => {
-        const service = services[input.value];
-        return { label: service.label, price: priceForMinutes(service.minutes) };
       });
     }
 
@@ -776,16 +838,17 @@
       }).join('\n');
     }
 
-    function getMonthlyItems(baseSelected, entries, monthlyOptions, months) {
+    function getMonthlyItems(baseSelected, entries, patentCount, months, employeesByAgreement) {
       const business = TARIFFS.base[currentBusiness];
       const regime = getRegime();
       const clientVat = TARIFFS.vat[vatSelect.value];
       const items = [];
+      const includedPatents = TARIFFS.patent.included;
       if (baseSelected) {
         const basePrice = priceForMinutes(regime.minutes);
         items.push({
           label: 'Базовое сопровождение',
-          detail: `${business.label}, ${regime.label}${regime.includesPatent ? ' · 1 патент в базе' : ''} · ${money(basePrice)}/мес.`,
+          detail: `${business.label}, ${regime.label}${regime.includesPatent ? ` · патентов в базе: ${includedPatents}` : ''} · ${money(basePrice)}/мес.`,
           price: basePrice
         });
         if (clientVat.basePercent) {
@@ -798,17 +861,27 @@
           });
         }
       }
-      items.push(...priceQuantityItems(entries), ...monthlyOptions);
+      const extraPatents = Math.max(0, patentCount - includedPatents);
+      if (extraPatents) {
+        const unitPrice = priceForMinutes(TARIFFS.patent.extraMinutes);
+        items.push({
+          label: 'Дополнительные патенты',
+          detail: `${numberFormat.format(extraPatents)} × ${money(unitPrice)}`,
+          price: extraPatents * unitPrice
+        });
+      }
+      items.push(...priceQuantityItems(entries, employeesByAgreement));
       return items.map((item) => ({
         ...item,
-        detail: `${item.detail || money(item.price) + '/мес.'} · ${numberFormat.format(months)} мес.`,
-        price: item.price * months
+        detail: `${item.detail} · ${numberFormat.format(months)} мес.`,
+        price: item.price === null ? null : item.price * months
       }));
     }
 
     function getPriceBreakdown(items, hasMonthly, months) {
-      const subtotal = items.reduce((sum, item) => sum + item.price, 0);
-      const serviceCount = items.filter((item) => item.price > 0 && !item.partOfBase).length;
+      const subtotal = items.reduce((sum, item) => sum + (item.price ?? 0), 0);
+      const needsQuote = items.some((item) => item.price === null);
+      const serviceCount = items.filter((item) => (item.price === null || item.price > 0) && !item.partOfBase).length;
       const volume = estimateRules.volumeDiscount;
       const advance = estimateRules.prepayment;
       const volumePercent = serviceCount >= volume.minimumServices ? volume.percent : 0;
@@ -825,14 +898,17 @@
       const discountDetail = packagePercent >= volumePercent && packagePercent > 0
         ? `${discountPercent}% за оплату сразу за ${advance.months} мес.`
         : (discountPercent ? `${discountPercent}% за объём` : 'Без скидки');
+      const adjustment = (label, detail, price, applies) => needsQuote && applies
+        ? { label, detail, price: null, displayPrice: quoteByAgreement }
+        : { label, detail, price };
       const adjustments = [
-        { label: 'Сумма услуг', price: subtotal },
-        { label: 'Скидка', detail: discountDetail, price: 0 - discount },
-        { label: 'Наценка за срочность', detail: urgencyPercent ? `${urgencyPercent}%` : 'Обычный срок', price: urgency },
-        { label: 'НДС на услуги', detail: vatPercent ? `${vatPercent}%` : 'Без НДС', price: vat },
-        { label: 'Итого', price: total, displayPrice: priceFrom(total) }
+        adjustment('Сумма услуг', '', subtotal, true),
+        adjustment('Скидка', discountDetail, 0 - discount, discountPercent > 0),
+        adjustment('Наценка за срочность', urgencyPercent ? `${urgencyPercent}%` : 'Обычный срок', urgency, urgencyPercent > 0),
+        adjustment('НДС на услуги', vatPercent ? `${vatPercent}%` : 'Без НДС', vat, vatPercent > 0),
+        { label: 'Итого', price: needsQuote ? null : total, displayPrice: needsQuote ? quoteByAgreement : priceFrom(total) }
       ];
-      return { total, adjustments };
+      return { total: needsQuote ? null : total, adjustments };
     }
 
     function updateEstimate() {
@@ -841,46 +917,57 @@
       byId('monthly-fields').hidden = !monthly;
       const baseSelected = monthly && byId('base-service').checked;
       vatSelect.disabled = !baseSelected || vatSelect.options.length === 1;
-      byId('base-scope').hidden = !baseSelected;
-      const includesPatent = baseSelected && getRegime().includesPatent;
-      byId('patent-group').hidden = !includesPatent;
+      const patentAvailable = baseSelected && currentBusiness === 'ip';
+      const includesPatent = patentAvailable && getRegime().includesPatent;
+      regimeSelect.disabled = Boolean(includesPatent && patentMode.value === 'standalone');
+      byId('patent-group').hidden = !patentAvailable;
+      byId('patent-count-field').hidden = !includesPatent;
+      byId('patent-hint').hidden = !includesPatent;
+      const patentCount = includesPatent ? readQuantity(patentCountInput) : 0;
+      byId('patent-error').hidden = patentCount !== null;
       const groups = {
-        patent: includesPatent ? readQuantities(patentFields) : [],
         payroll: monthly ? readQuantities(payrollFields) : [],
         primary: monthly ? readQuantities(primaryFields) : [],
         procedure: monthly ? readQuantities(procedureFields) : [],
         'one-off': readQuantities(oneOffFields)
       };
-      const monthlyEntries = [...groups.patent, ...groups.payroll, ...groups.primary, ...groups.procedure];
-      const monthlyOptions = monthly ? getSelectedServices('monthly-options', TARIFFS.monthlyOptions) : [];
-      const hasMonthly = baseSelected || monthlyEntries.length > 0 || monthlyOptions.length > 0;
+      const monthlyEntries = [...groups.payroll, ...groups.primary, ...groups.procedure];
+      const hasMonthly = baseSelected || monthlyEntries.length > 0;
       const months = hasMonthly ? readQuantity(monthsInput) : 1;
       if (!hasMonthly) monthsInput.removeAttribute('aria-invalid');
-      let invalid = months === null;
-      byId('months-error').hidden = !invalid;
+      let invalid = months === null || patentCount === null;
+      byId('months-error').hidden = months !== null;
       for (const [group, entries] of Object.entries(groups)) {
         const invalidGroup = entries.some(({ count }) => count === null);
         byId(`${group}-error`).hidden = !invalidGroup;
         invalid = invalid || invalidGroup;
       }
 
-      const monthlyItems = hasMonthly && !invalid ? getMonthlyItems(baseSelected, monthlyEntries, monthlyOptions, months) : [];
+      const employeeCount = groups.payroll.reduce((sum, entry) => sum + (entry.service.employee ? (entry.count ?? 0) : 0), 0);
+      const employeesByAgreement = !invalid && employeeCount > TARIFFS.payrollQuoteAbove;
+      const monthlyItems = hasMonthly && !invalid ? getMonthlyItems(baseSelected, monthlyEntries, patentCount, months, employeesByAgreement) : [];
       const oneOffItems = invalid ? [] : priceQuantityItems(groups['one-off']);
       const items = [...monthlyItems, ...oneOffItems];
       const { total, adjustments } = getPriceBreakdown(items, hasMonthly, months);
-      const invalidPrice = adjustments.some((item) => !Number.isSafeInteger(item.price));
+      const invalidPrice = [...items, ...adjustments].some((item) => item.price !== null && !Number.isSafeInteger(item.price));
       const ready = !invalid && !invalidPrice && items.length > 0;
       const client = byId('client-name').value.trim();
       const clientLine = client ? `Клиент — ${client}` : '';
       byId('estimate-client').textContent = clientLine;
       byId('estimate-client').hidden = !client;
+      const reviewLine = employeesByAgreement
+        ? `Штат — ${numberFormat.format(employeeCount)} чел. Стоимость зарплаты и кадрового делопроизводства согласуем отдельно.`
+        : '';
+      byId('estimate-review').textContent = reviewLine;
+      byId('estimate-review').hidden = !ready || !reviewLine;
       byId('estimate-total').hidden = !ready;
-      byId('total-price').textContent = ready ? priceFrom(total) : '';
+      const totalText = total === null ? quoteByAgreement : priceFrom(total);
+      byId('total-price').textContent = ready ? totalText : '';
       const empty = byId('empty-estimate');
       empty.hidden = ready;
       empty.textContent = invalid ? 'Проверьте количество в выделенных полях.'
         : (invalidPrice ? 'Уменьшите количества в расчёте.' : 'Выберите хотя бы одну услугу.');
-      byId('mobile-price').textContent = ready ? `Итого ${priceFrom(total)}` : empty.textContent;
+      byId('mobile-price').textContent = ready ? `Итого ${totalText.toLowerCase()}` : empty.textContent;
       byId('breakdown').hidden = !ready;
       renderBreakdown('monthly-breakdown', ready ? monthlyItems : []);
       renderBreakdown('one-off-breakdown', ready ? oneOffItems : []);
@@ -890,6 +977,7 @@
       if (ready) {
         const message = ['Предварительный расчёт бухгалтерских услуг'];
         if (clientLine) message.push(clientLine);
+        if (reviewLine) message.push(reviewLine);
         message.push(`Ставка — ${hourlyPrice}/ч. Демонстрационные нормативы.`);
         if (monthlyItems.length) {
           message.push('', `Ежемесячные услуги · ${numberFormat.format(months)} мес.`);
@@ -923,6 +1011,9 @@
     });
 
     byId('base-scope').textContent = `В базе — ${TARIFFS.baseScope}`;
+    byId('patent-hint').textContent = `Патентов в базовом тарифе — ${TARIFFS.patent.included}. Каждый дополнительный — ${money(priceForMinutes(TARIFFS.patent.extraMinutes))}/мес.`;
+    byId('payroll-limit').textContent = `При штате больше ${TARIFFS.payrollQuoteAbove} сотрудников стоимость зарплаты и кадрового делопроизводства согласуем отдельно.`;
+    byId('primary-hint').textContent = `Укажите количество документов за месяц. Для каждого вида сложите строки после ${lineRules.included}-й в каждом документе и внесите сумму в поле «Строк сверх лимита, всего».`;
     byId('hourly-note').textContent = `Ставка — ${hourlyPrice}/ч. Окончательная стоимость зависит от состава и объёма работ.`;
     byId('urgent-option').textContent = `Срочно (+${estimateRules.urgencyPercent}%)`;
     byId('billing-vat-option').textContent = `НДС ${estimateRules.vatPercent}% сверху`;
@@ -932,7 +1023,6 @@
     byId('prepayment-label').textContent = `Оплата сразу за ${advance.months} мес. (скидка ${advance.percent}%)`;
     renderRegimes();
     renderVatModes();
-    renderServiceOptions('monthly-options', TARIFFS.monthlyOptions, ' / мес.');
 
     calculator.addEventListener('change', (event) => {
       if (event.target.name === 'business') {
@@ -944,6 +1034,7 @@
         selectedRegimes[currentBusiness] = regimeSelect.value;
         renderVatModes();
       }
+      if (event.target === patentMode) renderVatModes();
       if (event.target === vatSelect) selectedVatModes[vatSelectionKey()] = vatSelect.value;
       if (event.target === prepayment && prepayment.checked) monthsInput.value = advance.months;
       updateEstimate();
