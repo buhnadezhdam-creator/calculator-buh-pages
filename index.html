@@ -8,7 +8,7 @@
   <script>
     // СТАВКА И ДЕМОНСТРАЦИОННЫЕ НОРМАТИВЫ.
     // hourlyRate — рубли в час, minutes — минуты на месяц или единицу, price — фиксированный тариф в рублях.
-    // basePercent — надбавка за учёт НДС в процентах только от базового тарифа.
+    // basePercent — надбавка в процентах только от базового тарифа.
     const TARIFFS = {
       hourlyRate: 3000,
       estimate: {
@@ -18,6 +18,13 @@
         vatPercent: 22
       },
       baseScope: 'Учёт по выписке одного расчётного счёта, расчёт налогов, плановая отчётность и ответы на текущие вопросы.',
+      activities: {
+        services: { label: 'Услуги', basePercent: 0 },
+        trade: { label: 'Опт и маркетплейсы', basePercent: 10 },
+        retail: { label: 'Розничная торговля', basePercent: 25 },
+        production: { label: 'Производство', basePercent: 25 },
+        construction: { label: 'Строительство', basePercent: 25 }
+      },
       vat: {
         none: { label: 'Без учёта НДС', basePercent: 0 },
         reduced: { label: 'НДС 5% или 7%', basePercent: 20 },
@@ -67,18 +74,19 @@
         { id: 'sales-prep', label: 'Оформить документы реализации', price: 450, perLine: true },
         { id: 'expense-reports', label: 'Обработать авансовые отчёты', price: 750, perLine: true }
       ],
-      // Минуты в месяц на каждый дополнительный счёт, кассу, подключение или договор.
+      // Ежемесячные допуслуги за каждую единицу.
       procedures: [
         { id: 'bank-accounts', label: 'Дополнительные расчётные счета', unit: 'счёт', minutes: 60 },
-        { id: 'cash-registers', label: 'Онлайн-кассы (ККТ)', unit: 'кассу', minutes: 60 },
-        { id: 'in-store-acquiring', label: 'Торговый эквайринг', unit: 'подключение', minutes: 60 },
-        { id: 'online-acquiring', label: 'Интернет-эквайринг', unit: 'подключение', minutes: 30 },
-        { id: 'marketplace-agreements', label: 'Договоры с маркетплейсами', unit: 'договор', minutes: 60 }
+        { id: 'cash-registers', label: 'Онлайн-кассы (ККТ)', unit: 'кассу', price: 5000 },
+        { id: 'in-store-acquiring', label: 'Торговый эквайринг', unit: 'одну единицу', price: 3000 },
+        { id: 'online-acquiring', label: 'Интернет-эквайринг', unit: 'одну единицу', minutes: 30 },
+        { id: 'marketplace-agreements', label: 'Маркетплейсы без товарного учёта', unit: 'договор/кабинет', price: 5000 },
+        { id: 'marketplace-inventory', label: 'Маркетплейсы с товарным учётом', unit: 'договор/кабинет', price: 15000 }
       ],
       oneOffServices: [
         { id: 'reporting', label: 'Сдача отчётности', unit: 'отчёт', minutes: 60 },
-        { id: 'consultation', label: 'Консультация бухгалтера', unit: 'час', minutes: 60, step: 0.5 },
-        { id: 'reconciliation', label: 'Сверка с налоговой', unit: 'сверку', minutes: 40 }
+        { id: 'consultation', label: 'Консультация бухгалтера', unit: 'час', price: 5000, step: 0.5 },
+        { id: 'tax-demand-response', label: 'Ответ на требование налоговой', unit: 'ответ', price: 2500, fromPrice: true }
       ]
     };
   </script>
@@ -263,6 +271,7 @@
       min-height: 44px;
       cursor: pointer;
     }
+    .quantity-choice > span { overflow-wrap: anywhere; }
     .quantity-choice small { display: block; margin-top: 3px; color: var(--muted); font-size: .78rem; }
     .line-count {
       grid-column: 1 / -1;
@@ -409,6 +418,7 @@
       .parameters { grid-template-columns: 1fr; gap: 14px; }
     }
     @media (max-width: 480px) {
+      .topbar .wrap { flex-wrap: wrap; }
       .brand { font-size: .8rem; }
       .demo { font-size: .7rem; }
       .brand-icon { width: 28px; height: 28px; }
@@ -538,6 +548,10 @@
                 <label class="field-label" for="vat-mode">Учёт НДС клиента</label>
                 <div class="select"><select id="vat-mode"></select></div>
               </div>
+              <div>
+                <label class="field-label" for="activity">Вид деятельности</label>
+                <div class="select"><select id="activity"></select></div>
+              </div>
             </div>
           </section>
 
@@ -582,6 +596,7 @@
             <h2 id="options-title">Ежемесячные допуслуги</h2>
             <p class="section-intro">Укажите количество. Первый расчётный счёт входит в базовый тариф.</p>
             <div class="quantity-list" id="procedure-fields"></div>
+            <p class="hint">Укажите каждый договор/кабинет маркетплейса один раз по подходящему тарифу.</p>
             <p class="hint error" id="procedure-error" role="status" hidden>Укажите целое количество от 1 в выделенных полях.</p>
           </section>
         </div>
@@ -636,6 +651,7 @@
 
     const calculator = byId('calculator');
     const regimeSelect = byId('regime');
+    const activitySelect = byId('activity');
     const patentMode = byId('patent-mode');
     const patentCountInput = byId('patent-count');
     const vatSelect = byId('vat-mode');
@@ -725,7 +741,8 @@
         title.textContent = service.label;
         const unitPrice = getUnitPrice(service);
         const unit = document.createElement('small');
-        const unitText = `${money(unitPrice)} за ${service.unit || 'документ'}`;
+        const unitPriceText = service.fromPrice ? priceFrom(unitPrice) : money(unitPrice);
+        const unitText = `${unitPriceText} за ${service.unit || 'документ'}`;
         const servicePackage = service.package;
         unit.textContent = servicePackage
           ? `${money(getUnitPrice(servicePackage))} за первого, далее — ${unitText}.`
@@ -797,7 +814,12 @@
           const unit = service.step ? ' ч' : (service.perLine ? ' док.' : '');
           const quantity = `${numberFormat.format(count)}${unit}`;
           const lineDetail = extraLines ? ` + ${numberFormat.format(extraLines)} строк сверх лимита × ${money(extraLinePrice)}` : '';
-          return { label, detail: `${quantity} × ${money(unitPrice)}${lineDetail}`, price: Math.round(count * unitPrice) + extraLines * extraLinePrice };
+          return {
+            label,
+            detail: `${quantity} × ${money(unitPrice)}${lineDetail}`,
+            price: Math.round(count * unitPrice) + extraLines * extraLinePrice,
+            fromPrice: service.fromPrice
+          };
         }
 
         const packagePrice = getUnitPrice(servicePackage);
@@ -824,7 +846,7 @@
           detail.textContent = item.detail;
           title.append(detail);
         }
-        price.textContent = item.displayPrice || money(item.price);
+        price.textContent = item.displayPrice || (item.fromPrice ? priceFrom(item.price) : money(item.price));
         row.append(title, price);
         return row;
       }));
@@ -834,7 +856,8 @@
     function itemizedText(items) {
       return items.map((item) => {
         const detail = item.detail ? ` (${item.detail})` : '';
-        return `• ${item.label}${detail} — ${item.displayPrice || money(item.price)}`;
+        const price = item.displayPrice || (item.fromPrice ? priceFrom(item.price) : money(item.price));
+        return `• ${item.label}${detail} — ${price}`;
       }).join('\n');
     }
 
@@ -851,6 +874,16 @@
           detail: `${business.label}, ${regime.label}${regime.includesPatent ? ` · патентов в базе: ${includedPatents}` : ''} · ${money(basePrice)}/мес.`,
           price: basePrice
         });
+        const activity = TARIFFS.activities[activitySelect.value];
+        if (activity.basePercent) {
+          const surcharge = Math.round(basePrice * activity.basePercent / 100);
+          items.push({
+            label: 'Отраслевая надбавка',
+            detail: `${activity.label} · +${activity.basePercent}% к базе · ${money(surcharge)}/мес.`,
+            price: surcharge,
+            partOfBase: true
+          });
+        }
         if (clientVat.basePercent) {
           const vatPrice = priceForMinutes(regime.minutes * clientVat.basePercent / 100);
           items.push({
@@ -916,6 +949,7 @@
       const monthly = calculator.querySelector('[name="mode"]:checked').value === 'monthly';
       byId('monthly-fields').hidden = !monthly;
       const baseSelected = monthly && byId('base-service').checked;
+      activitySelect.disabled = !baseSelected;
       vatSelect.disabled = !baseSelected || vatSelect.options.length === 1;
       const patentAvailable = baseSelected && currentBusiness === 'ip';
       const includesPatent = patentAvailable && getRegime().includesPatent;
@@ -1021,6 +1055,7 @@
     const advance = estimateRules.prepayment;
     byId('discount-hint').textContent = `Скидка ${volume.percent}% при выборе от ${volume.minimumServices} услуг. Действует большая из двух скидок.`;
     byId('prepayment-label').textContent = `Оплата сразу за ${advance.months} мес. (скидка ${advance.percent}%)`;
+    activitySelect.replaceChildren(...Object.entries(TARIFFS.activities).map(([value, activity]) => new Option(activity.label, value)));
     renderRegimes();
     renderVatModes();
 
@@ -1036,7 +1071,9 @@
       }
       if (event.target === patentMode) renderVatModes();
       if (event.target === vatSelect) selectedVatModes[vatSelectionKey()] = vatSelect.value;
-      if (event.target === prepayment && prepayment.checked) monthsInput.value = advance.months;
+      if (event.target === prepayment) {
+        monthsInput.value = prepayment.checked ? advance.months : monthsInput.defaultValue;
+      }
       updateEstimate();
     });
     calculator.addEventListener('input', (event) => {
