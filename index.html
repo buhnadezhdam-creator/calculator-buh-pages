@@ -152,7 +152,43 @@
     .demo::before { content: ''; flex: 0 0 6px; height: 6px; border-radius: 50%; background: #946834; }
     .intro { padding-block: 44px 32px; }
     h1 { font-size: clamp(2.2rem, 5vw, 3.55rem); line-height: 1.04; letter-spacing: -.045em; }
-    .intro p { margin-top: 14px; color: var(--muted); line-height: 1.55; }
+    .tour-launch, .tour-card button {
+      min-height: 44px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fffdf8;
+      color: var(--green);
+      font-size: .88rem;
+      font-weight: 650;
+    }
+    .tour-launch { margin-top: 15px; }
+    .tour-launch:hover, .tour-card button:not(:disabled):hover { background: var(--light); }
+    .tour-card {
+      position: fixed;
+      z-index: 5;
+      inset: var(--tour-top, 12px) auto auto var(--tour-left, 12px);
+      width: min(345px, calc(100% - 24px));
+      max-height: calc(100dvh - 24px);
+      overflow-y: auto;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-top: 4px solid var(--green);
+      border-radius: 6px;
+      background: #fffdf8;
+      color: #2e271f;
+      box-shadow: 0 8px 28px #56321d30;
+    }
+    .tour-card h2 { margin-block: 4px 7px; font: 1.22rem Georgia, serif; }
+    .tour-card p { color: var(--muted); font-size: .86rem; line-height: 1.45; }
+    .tour-card .tour-progress { color: var(--green); font-size: .78rem; font-weight: 700; }
+    .tour-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .tour-actions button:last-child { margin-inline-start: auto; }
+    .tour-actions button:disabled { opacity: .52; cursor: default; }
+    #tour-next:not(:disabled) { background: var(--dark); color: #fffdf8; }
+    #tour-next:not(:disabled):hover { background: #71364d; }
+    .tour-target { outline: 3px solid #a24762; outline-offset: 3px; scroll-margin-block: 10px; }
+    .tour-launch:focus-visible, .tour-card :focus-visible { outline-color: #9d4a62; }
 
     .layout {
       display: grid;
@@ -337,6 +373,7 @@
     .estimate-note { margin-block: 13px 15px; color: #d3e3d9; font-size: .83rem; line-height: 1.45; }
     .summary :focus-visible { outline-color: var(--mint); }
     .summary-actions { display: grid; gap: 8px; }
+    .copy-hint { margin-top: 5px; color: #d3e3d9; font-size: .81rem; line-height: 1.45; text-align: center; }
     .summary-action {
       display: flex;
       justify-content: center;
@@ -392,6 +429,14 @@
       .layout { grid-template-columns: minmax(0, 1fr); gap: 14px; padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
       .controls, .summary { padding: 18px; border-radius: 17px; }
       .summary { position: static; }
+      .tour-open .layout { padding-bottom: calc(100px + var(--tour-height, 0px) + env(safe-area-inset-bottom)); }
+      .tour-card {
+        inset: auto 0 0;
+        width: 100%;
+        max-height: 60dvh;
+        padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+        border-radius: 12px 12px 0 0;
+      }
       .total strong { font-size: clamp(2rem, 7vw, 2.8rem); }
       .mobile-estimate {
         position: fixed;
@@ -490,6 +535,7 @@
       .line-item small { color: var(--muted); }
       .adjustment-list .line-item:last-child dd { color: var(--green); }
       .summary-actions { gap: 7px; }
+      .copy-hint { color: var(--muted); }
       .summary-action { color: #683144; }
       .share { background: var(--dark); color: #fffaf8; }
       .share:not(:disabled):hover { background: #71364d; }
@@ -513,7 +559,7 @@
     @media print {
       @page { margin: 15mm; }
       :root, body { background: white; color: #182b23; }
-      .topbar, .intro, .controls, .summary-actions, .copy-status, .manual-copy, .mobile-estimate { display: none !important; }
+      .topbar, .intro, .controls, .summary-actions, .copy-status, .manual-copy, .mobile-estimate, .tour-card { display: none !important; }
       .wrap { width: 100%; }
       .layout { display: block; padding: 0; }
       .summary { position: static; display: block; max-height: none; padding: 0; background: white; color: #182b23; box-shadow: none; }
@@ -541,7 +587,7 @@
   <main class="wrap">
     <div class="intro">
       <h1>Калькулятор стоимости</h1>
-      <p>Отметьте нужные услуги и укажите количество для каждой.</p>
+      <button class="tour-launch" id="tour-launch" type="button" aria-controls="tour-card" aria-expanded="false">Как пользоваться?</button>
     </div>
 
     <div class="layout">
@@ -654,7 +700,7 @@
 
           <section class="section" aria-labelledby="payroll-title">
             <h2 id="payroll-title">Зарплата, кадры и ГПХ</h2>
-            <p class="section-intro">В расчёт зарплаты входит кадровое делопроизводство. ВКС укажите отдельной строкой.</p>
+            <p class="section-intro">Отметьте нужные позиции и укажите количество. В расчёт зарплаты входит кадровое делопроизводство. ВКС укажите отдельной строкой.</p>
             <div class="quantity-list" id="payroll-fields"></div>
             <p class="hint error" id="payroll-error" role="status" hidden>Укажите целое количество от 1 в выделенных полях.</p>
             <p class="hint" id="payroll-limit"></p>
@@ -678,7 +724,7 @@
 
         <section class="section" aria-labelledby="one-off-title">
           <h2 id="one-off-title">Разовые услуги</h2>
-          <p class="section-intro">Для задач вне ежемесячного сопровождения.</p>
+          <p class="section-intro">Для задач вне ежемесячного сопровождения. Отметьте нужные позиции и укажите количество.</p>
           <div class="quantity-list" id="one-off-fields"></div>
           <p class="hint error" id="one-off-error" role="status" hidden>Проверьте количество. Для консультации можно указать часы с шагом 0,5.</p>
         </section>
@@ -700,7 +746,10 @@
         <p class="estimate-note" id="hourly-note"></p>
         <div class="summary-actions">
           <button class="summary-action share" id="share" type="button" disabled>Поделиться расчётом</button>
-          <button class="summary-action copy" id="copy" type="button" disabled><span class="copy-icon" aria-hidden="true"></span>Скопировать расчёт</button>
+          <div>
+            <button class="summary-action copy" id="copy" type="button" aria-describedby="copy-hint" disabled><span class="copy-icon" aria-hidden="true"></span>Скопировать расчёт</button>
+            <p class="copy-hint" id="copy-hint">В буфер попадут итог и разбивка.</p>
+          </div>
           <button class="summary-action copy" id="print" type="button" disabled>Распечатать или сохранить PDF</button>
           <button class="summary-action reset" id="reset" type="button">Сбросить расчёт</button>
         </div>
@@ -712,6 +761,16 @@
       <strong id="mobile-price"></strong>
       <span class="details-label">К расчёту</span>
     </a>
+    <aside class="tour-card" id="tour-card" role="dialog" aria-labelledby="tour-title" aria-describedby="tour-progress tour-description" hidden>
+      <p class="tour-progress" id="tour-progress"></p>
+      <h2 id="tour-title" tabindex="-1"></h2>
+      <p id="tour-description"></p>
+      <div class="tour-actions">
+        <button id="tour-back" type="button">Назад</button>
+        <button id="tour-next" type="button">Далее</button>
+        <button id="tour-close" type="button">Закрыть</button>
+      </div>
+    </aside>
     <noscript>Для расчёта включите JavaScript в браузере.</noscript>
   </main>
 
@@ -1134,6 +1193,121 @@
     renderRegimes();
     renderVatModes();
 
+    const tourSteps = [
+      {
+        target: '.mode-choices',
+        title: 'Выберите формат расчёта',
+        description: 'Выберите сопровождение для ежемесячной работы или разовые услуги для отдельной задачи.'
+      },
+      {
+        target: '.term-controls',
+        title: 'Укажите параметры сопровождения',
+        description: 'Проверьте срок, форму бизнеса и налоговый режим. Срок применяется к ежемесячным услугам. Предоплата за шесть месяцев даёт скидку.',
+        oneOff: {
+          target: '#client-name',
+          title: 'Проверьте условия расчёта',
+          description: 'Имя появится в смете. При необходимости укажите срочность и выберите НДС на услуги.'
+        }
+      },
+      {
+        target: '#payroll-fields .quantity-row',
+        title: 'Добавьте услуги',
+        description: 'Отметьте нужные услуги и укажите количество каждой позиции за месяц. Разовые услуги можно добавить внизу формы.',
+        oneOff: {
+          target: '#one-off-fields .quantity-row',
+          title: 'Добавьте разовые услуги',
+          description: 'Отметьте нужные позиции и укажите количество. Для консультации укажите время в часах с шагом в полчаса.'
+        }
+      },
+      {
+        target: '#copy',
+        title: 'Проверьте итог и скопируйте расчёт',
+        description: 'Сверьте сумму и разбивку в смете. Когда расчёт готов, нажмите «Скопировать расчёт» и вставьте текст в сообщение.'
+      }
+    ];
+    const tourLaunch = byId('tour-launch');
+    const tourCard = byId('tour-card');
+    const tourTitle = byId('tour-title');
+    const tourBack = byId('tour-back');
+    const tourNext = byId('tour-next');
+    const tourNarrow = matchMedia('(max-width: 780px)');
+    let tourStep = 0;
+    let tourTarget = null;
+
+    function positionTourCard() {
+      if (!tourTarget) return;
+      const width = document.documentElement.clientWidth;
+      const height = document.documentElement.clientHeight;
+      const card = tourCard.getBoundingClientRect();
+      if (tourNarrow.matches) {
+        document.body.style.setProperty('--tour-height', `${card.height}px`);
+        return;
+      }
+
+      const target = tourTarget.getBoundingClientRect();
+      const gap = 12;
+      let left = target.left;
+      let top = target.bottom + gap;
+      if (width - target.right >= card.width + 2 * gap) {
+        left = target.right + gap;
+        top = target.top;
+      } else if (target.left >= card.width + 2 * gap) {
+        left = target.left - card.width - gap;
+        top = target.top;
+      } else if (top + card.height > height - gap) {
+        top = target.top - card.height - gap;
+      }
+      tourCard.style.setProperty('--tour-left', `${Math.max(gap, Math.min(left, width - card.width - gap))}px`);
+      tourCard.style.setProperty('--tour-top', `${Math.max(gap, Math.min(top, height - card.height - gap))}px`);
+    }
+
+    function showTourStep(index) {
+      const step = tourSteps[index];
+      if (!step) return;
+
+      const oneOff = calculator.querySelector('[name="mode"]:checked').value === 'one-off';
+      const content = oneOff && step.oneOff ? step.oneOff : step;
+      tourStep = index;
+      tourTarget?.classList.remove('tour-target');
+      tourTarget = document.querySelector(content.target);
+      tourTarget.classList.add('tour-target');
+      byId('tour-progress').textContent = `Шаг ${index + 1} из ${tourSteps.length}`;
+      tourTitle.textContent = content.title;
+      byId('tour-description').textContent = content.description;
+      tourBack.disabled = index === 0;
+      tourNext.disabled = index === tourSteps.length - 1;
+      tourCard.hidden = false;
+      tourLaunch.setAttribute('aria-expanded', 'true');
+      document.body.classList.add('tour-open');
+      positionTourCard();
+      tourTarget.scrollIntoView({ block: tourNarrow.matches ? 'start' : 'center', inline: 'nearest' });
+      positionTourCard();
+      tourTitle.focus({ preventScroll: true });
+    }
+
+    function closeTour() {
+      if (!tourTarget) return;
+      tourTarget.classList.remove('tour-target');
+      tourTarget = null;
+      tourCard.hidden = true;
+      tourLaunch.setAttribute('aria-expanded', 'false');
+      document.body.classList.remove('tour-open');
+      document.body.style.removeProperty('--tour-height');
+      tourLaunch.focus();
+    }
+
+    tourLaunch.addEventListener('click', () => showTourStep(0));
+    tourBack.addEventListener('click', () => showTourStep(tourStep - 1));
+    tourNext.addEventListener('click', () => showTourStep(tourStep + 1));
+    byId('tour-close').addEventListener('click', closeTour);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && tourTarget) closeTour();
+    });
+    window.addEventListener('resize', positionTourCard);
+    window.addEventListener('scroll', () => {
+      if (!tourNarrow.matches) positionTourCard();
+    }, { passive: true });
+
     calculator.addEventListener('change', (event) => {
       if (event.target.name === 'business') {
         currentBusiness = event.target.value;
@@ -1150,6 +1324,7 @@
         monthsInput.value = prepayment.checked ? advance.months : monthsInput.defaultValue;
       }
       updateEstimate();
+      if (tourTarget && event.target.name === 'mode' && tourStep) showTourStep(tourStep);
     });
     calculator.addEventListener('input', (event) => {
       if (event.target === monthsInput && monthsInput.valueAsNumber !== advance.months) prepayment.checked = false;
@@ -1158,6 +1333,7 @@
     calculator.addEventListener('submit', (event) => event.preventDefault());
 
     byId('reset').addEventListener('click', () => {
+      closeTour();
       calculator.reset();
       currentBusiness = defaultBusiness;
       selectedRegimes = {};
