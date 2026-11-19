@@ -7,10 +7,9 @@
   <title>Калькулятор стоимости бухгалтерского обслуживания</title>
   <script>
     // СТАВКА И ДЕМОНСТРАЦИОННЫЕ НОРМАТИВЫ.
-    // hourlyRate — рубли в час, minutes — минуты на месяц или единицу, price — фиксированный тариф в рублях.
+    // price — тариф в рублях за месяц или единицу услуги.
     // basePercent — надбавка в процентах только от базового тарифа.
     const TARIFFS = {
-      hourlyRate: 3000,
       estimate: {
         urgencyPercent: 30,
         volumeDiscount: { minimumServices: 3, percent: 5 },
@@ -34,29 +33,29 @@
         ip: {
           label: 'ИП',
           regimes: {
-            usnIncome: { label: 'УСН «Доходы»', minutes: 180, vatModes: ['none', 'reduced', 'standard'] },
-            usnNet: { label: 'УСН «Доходы минус расходы»', minutes: 252, vatModes: ['none', 'reduced', 'standard'] },
-            ausnIncome: { label: 'АУСН «Доходы»', minutes: 180, vatModes: ['none'] },
-            ausnNet: { label: 'АУСН «Доходы минус расходы»', minutes: 252, vatModes: ['none'] },
-            osno: { label: 'ОСНО', minutes: 324, vatModes: ['standard', 'none'] }
+            usnIncome: { label: 'УСН «Доходы»', price: 9000, vatModes: ['none', 'reduced', 'standard'] },
+            usnNet: { label: 'УСН «Доходы минус расходы»', price: 12600, vatModes: ['none', 'reduced', 'standard'] },
+            ausnIncome: { label: 'АУСН «Доходы»', price: 9000, vatModes: ['none'] },
+            ausnNet: { label: 'АУСН «Доходы минус расходы»', price: 12600, vatModes: ['none'] },
+            osno: { label: 'ОСНО', price: 16200, vatModes: ['standard', 'none'] }
           }
         },
         ooo: {
           label: 'ООО',
           regimes: {
-            usnIncome: { label: 'УСН «Доходы»', minutes: 540, vatModes: ['none', 'reduced', 'standard'] },
-            usnNet: { label: 'УСН «Доходы минус расходы»', minutes: 756, vatModes: ['none', 'reduced', 'standard'] },
-            ausnIncome: { label: 'АУСН «Доходы»', minutes: 540, vatModes: ['none'] },
-            ausnNet: { label: 'АУСН «Доходы минус расходы»', minutes: 756, vatModes: ['none'] },
-            osno: { label: 'ОСНО', minutes: 972, vatModes: ['standard', 'none'] }
+            usnIncome: { label: 'УСН «Доходы»', price: 27000, vatModes: ['none', 'reduced', 'standard'] },
+            usnNet: { label: 'УСН «Доходы минус расходы»', price: 37800, vatModes: ['none', 'reduced', 'standard'] },
+            ausnIncome: { label: 'АУСН «Доходы»', price: 27000, vatModes: ['none'] },
+            ausnNet: { label: 'АУСН «Доходы минус расходы»', price: 37800, vatModes: ['none'] },
+            osno: { label: 'ОСНО', price: 48600, vatModes: ['standard', 'none'] }
           }
         }
       },
       patent: {
-        standalone: { label: 'Патент', minutes: 216, vatModes: ['none'], includesPatent: true },
-        combinedMinutes: { usnIncome: 270, usnNet: 342, osno: 396 },
+        standalone: { label: 'Патент', price: 10800, vatModes: ['none'], includesPatent: true },
+        combinedPrices: { usnIncome: 13500, usnNet: 17100, osno: 19800 },
         included: 1,
-        extraMinutes: 90
+        extra: { price: 4500 }
       },
       // Тарифы зарплаты включают кадровое делопроизводство. Лимит калькулятора считается по штатным сотрудникам.
       payrollQuoteAbove: 10,
@@ -76,15 +75,15 @@
       ],
       // Ежемесячные допуслуги за каждую единицу.
       procedures: [
-        { id: 'bank-accounts', label: 'Дополнительные расчётные счета', unit: 'счёт', minutes: 60 },
+        { id: 'bank-accounts', label: 'Дополнительные расчётные счета', unit: 'счёт', price: 3000 },
         { id: 'cash-registers', label: 'Онлайн-кассы (ККТ)', unit: 'кассу', price: 5000 },
         { id: 'in-store-acquiring', label: 'Торговый эквайринг', unit: 'одну единицу', price: 3000 },
-        { id: 'online-acquiring', label: 'Интернет-эквайринг', unit: 'одну единицу', minutes: 30 },
+        { id: 'online-acquiring', label: 'Интернет-эквайринг', unit: 'одну единицу', price: 1500 },
         { id: 'marketplace-agreements', label: 'Маркетплейсы без товарного учёта', unit: 'договор/кабинет', price: 5000 },
         { id: 'marketplace-inventory', label: 'Маркетплейсы с товарным учётом', unit: 'договор/кабинет', price: 15000 }
       ],
       oneOffServices: [
-        { id: 'reporting', label: 'Сдача отчётности', unit: 'отчёт', minutes: 60 },
+        { id: 'reporting', label: 'Сдача отчётности', unit: 'отчёт', price: 3000 },
         { id: 'consultation', label: 'Консультация бухгалтера', unit: 'час', price: 5000, step: 0.5 },
         { id: 'tax-demand-response', label: 'Ответ на требование налоговой', unit: 'ответ', price: 2500, fromPrice: true }
       ]
@@ -339,7 +338,7 @@
       font-size: .9rem;
     }
     .summary {
-      position: sticky;
+      position: static;
       top: 20px;
       background: var(--dark);
       color: #fff;
@@ -372,24 +371,26 @@
     .empty { color: #deece3; font-size: .88rem; line-height: 1.5; }
     .estimate-note { margin-block: 13px 15px; color: #d3e3d9; font-size: .83rem; line-height: 1.45; }
     .summary :focus-visible { outline-color: var(--mint); }
-    .summary-actions { display: grid; gap: 8px; }
-    .copy-hint { margin-top: 5px; color: #d3e3d9; font-size: .81rem; line-height: 1.45; text-align: center; }
+    .summary-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .copy-hint { align-self: center; color: #d3e3d9; font-size: .74rem; line-height: 1.35; }
+    .print-section-title { display: none; }
     .summary-action {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 10px;
+      gap: 6px;
       width: 100%;
-      min-height: 44px;
-      padding: 8px 10px;
+      min-height: 34px;
+      padding: 5px 7px;
       border: 1px solid transparent;
       border-radius: 9px;
       background: transparent;
       color: #deece3;
+      font-size: .82rem;
+      line-height: 1.3;
       font-weight: 650;
     }
     .share {
-      min-height: 46px;
       background: var(--mint);
       color: #192b1d;
       font-weight: 750;
@@ -398,7 +399,7 @@
     .summary-action:disabled { opacity: .55; cursor: default; }
     .copy { border-color: #648578; }
     .copy:not(:disabled):hover, .reset:hover { background: #204539; }
-    .copy-icon { display: block; width: 13px; height: 13px; border: 1.5px solid; border-radius: 2px; position: relative; }
+    .copy-icon { display: block; flex: 0 0 11px; height: 11px; margin-left: 4px; border: 1.5px solid; border-radius: 2px; position: relative; }
     .copy-icon::after { content: ''; position: absolute; inset: -5px 3px 3px -5px; border: solid; border-width: 1.5px 0 0 1.5px; border-radius: 2px 0 0; }
     .copy-status { color: var(--mint); font-size: .82rem; line-height: 1.45; }
     .copy-status:not(:empty) { margin-top: 10px; }
@@ -414,10 +415,11 @@
     }
     .mobile-estimate { display: none; }
 
-    @media screen and (min-width: 781px) and (min-height: 650px) {
-      .summary { display: flex; flex-direction: column; max-height: calc(100dvh - 40px); }
-      .summary > :not(.breakdown) { flex-shrink: 0; }
-      .breakdown { min-height: 100px; overflow-y: auto; }
+    @media screen and (min-width: 781px) {
+      .summary.is-pinned { position: sticky; }
+    }
+    @media (max-width: 780px), (pointer: coarse) {
+      .summary-action { min-height: 44px; }
     }
     @media (max-width: 940px) and (min-width: 781px) {
       .parameters { grid-template-columns: 1fr; }
@@ -523,18 +525,21 @@
       .quantity-list { gap: 0; border-top: 1px solid var(--line); }
       .quantity-row { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding-block: 9px; }
       .quantity-row:has(:checked) { background: #f9eef0; border-color: var(--line); }
-      .summary { border-top: 4px solid var(--green); color: #2e271f; box-shadow: 0 12px 28px #56321d14; }
+      .summary { padding: 17px clamp(15px, 2vw, 24px); border-top: 4px solid var(--green); color: #2e271f; box-shadow: 0 12px 28px #56321d14; }
       .summary h2 { font-size: 1.42rem; }
-      .estimate { margin-block: 19px 18px; }
-      .total { align-items: start; flex-direction: column; gap: 6px; }
-      .total strong { color: var(--green); font-size: clamp(2rem, 4vw, 3.08rem); }
+      .estimate { margin-block: 10px 12px; }
+      .total strong { color: var(--green); font-size: clamp(1.8rem, 3.4vw, 2.7rem); }
       .total span, .client-name, .estimate-review, .empty, .estimate-note { color: var(--muted); }
-      .breakdown { border: 0; border-block: 1px dashed #c4ac99; border-radius: 0; padding: 13px 0; background: transparent; }
+      .breakdown { border: 0; border-block: 1px dashed #c4ac99; border-radius: 0; padding: 9px 0; background: transparent; }
+      .breakdown dl { gap: 6px; }
+      .breakdown dl + dl { margin-top: 8px; padding-top: 8px; }
       .breakdown dl + dl, .adjustment-list .line-item:last-child { border-top: 1px dashed #c4ac99; }
       .line-item dt { color: #382e26; }
       .line-item small { color: var(--muted); }
+      .adjustment-list small { display: inline; margin: 0; }
+      .adjustment-list small::before { content: ' · '; }
       .adjustment-list .line-item:last-child dd { color: var(--green); }
-      .summary-actions { gap: 7px; }
+      .estimate-note { margin-block: 9px; font-size: .78rem; }
       .copy-hint { color: var(--muted); }
       .summary-action { color: #683144; }
       .share { background: var(--dark); color: #fffaf8; }
@@ -544,6 +549,23 @@
       :focus-visible, .choice input:focus-visible + span, .summary :focus-visible { outline-color: #9d4a62; }
       .copy-status { color: #683144; }
 
+      @media (min-width: 781px) {
+        main.wrap {
+          display: grid;
+          grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);
+          column-gap: clamp(18px, 3.1vw, 42px);
+          padding-bottom: 48px;
+        }
+        .layout { display: contents; }
+        .intro, .controls { grid-column: 1; }
+        .intro { padding-block: 33px 23px; }
+        h1 { font-size: clamp(2.3rem, 4.8vw, 3.85rem); }
+        .summary { grid-column: 2; grid-row: 1 / span 2; align-self: start; margin-top: 15px; }
+      }
+      @media (min-width: 781px) and (max-width: 1100px) {
+        .summary-action { padding-inline: 5px; font-size: .78rem; }
+        .copy-icon { display: none; }
+      }
       @media (max-width: 780px) {
         .wrap { width: min(620px, calc(100% - 28px)); }
         .layout { grid-template-columns: 1fr; gap: 14px; }
@@ -557,19 +579,29 @@
     }
 
     @media print {
-      @page { margin: 15mm; }
-      :root, body { background: white; color: #182b23; }
+      @page { size: A4; margin: 16mm 17mm; }
+      :root, body { background: white; color: #2e271f; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
       .topbar, .intro, .controls, .summary-actions, .copy-status, .manual-copy, .mobile-estimate, .tour-card { display: none !important; }
       .wrap { width: 100%; }
       .layout { display: block; padding: 0; }
-      .summary { position: static; display: block; max-height: none; padding: 0; background: white; color: #182b23; box-shadow: none; }
-      .summary h2 { font-size: 20pt; margin-bottom: 3mm; }
-      .client-name, .estimate-review, .estimate-note, .line-item dt, .line-item small, .total span { color: #30443b; }
-      .total strong, .adjustment-list .line-item:last-child dd { color: #182b23; }
-      .breakdown { overflow: visible; padding: 4mm 0; border: 0; background: white; }
-      .breakdown dl + dl, .adjustment-list .line-item:last-child { border-color: #aabbb0; }
-      .line-item { break-inside: avoid; }
+      .summary { position: static; display: block; max-height: none; padding: 5mm 0 0; border: 0; border-top: 2pt solid #823a4c; border-radius: 0; background: white; color: #2e271f; box-shadow: none; }
+      .summary h2 { font: 26pt Georgia, serif; margin-bottom: 2mm; }
+      .client-name, .estimate-review, .estimate-note, .line-item small, .total span { color: #675a50; }
+      .client-name { font-size: 11pt; }
+      .estimate { margin: 5mm 0; padding: 4mm 5mm; border: 1pt solid #e7d5cc; background: #f8eee7; break-inside: avoid; }
+      .total strong { color: #823a4c; font: 26pt Georgia, serif; }
+      .total span { font-size: 10pt; }
+      .breakdown { overflow: visible; padding: 0; border: 0; background: white; }
+      .print-section-title { display: block; margin: 5mm 0 1mm; color: #823a4c; font: 13pt Georgia, serif; break-after: avoid; }
+      .print-section-title:has(+ dl[hidden]) { display: none; }
+      .breakdown dl { display: block; }
+      .line-item { padding: 2mm 0; border-bottom: .5pt solid #e4d9cf; color: #2e271f; font-size: 10pt; break-inside: avoid; }
+      .line-item dt { color: inherit; }
+      .line-item small { font-size: 8.5pt; }
+      .adjustment-list .line-item:last-child { padding: 3mm 0; border-top: 1pt solid #b58b96; color: #823a4c; }
+      .adjustment-list .line-item:last-child dd { color: inherit; }
       .adjustment-list { break-inside: avoid; }
+      .estimate-note { margin: 4mm 0 0; font-size: 9pt; }
     }
   </style>
 </head>
@@ -739,18 +771,20 @@
         </div>
         <p class="estimate-review" id="estimate-review" hidden></p>
         <div class="breakdown" id="breakdown" hidden>
+          <h3 class="print-section-title">Ежемесячные услуги</h3>
           <dl id="monthly-breakdown" aria-label="Ежемесячные позиции" hidden></dl>
+          <h3 class="print-section-title">Разовые услуги</h3>
           <dl id="one-off-breakdown" aria-label="Разовые позиции" hidden></dl>
+          <h3 class="print-section-title">Скидки, наценки и итог</h3>
           <dl id="adjustment-breakdown" class="adjustment-list" aria-label="Скидка, наценка, НДС и итог" hidden></dl>
         </div>
-        <p class="estimate-note" id="hourly-note"></p>
+        <p class="estimate-note">Окончательная стоимость зависит от состава и объёма работ.</p>
         <div class="summary-actions">
+          <button class="summary-action copy" id="copy" type="button" aria-describedby="copy-hint" disabled><span class="copy-icon" aria-hidden="true"></span>Скопировать карточку</button>
+          <button class="summary-action copy" id="download-card" type="button" disabled>Скачать PNG</button>
           <button class="summary-action share" id="share" type="button" disabled>Поделиться расчётом</button>
-          <div>
-            <button class="summary-action copy" id="copy" type="button" aria-describedby="copy-hint" disabled><span class="copy-icon" aria-hidden="true"></span>Скопировать расчёт</button>
-            <p class="copy-hint" id="copy-hint">В буфер попадут итог и разбивка.</p>
-          </div>
-          <button class="summary-action copy" id="print" type="button" disabled>Распечатать или сохранить PDF</button>
+          <button class="summary-action copy" id="print" type="button" disabled>Печать / PDF</button>
+          <p class="copy-hint" id="copy-hint">В карточке есть итог и разбивка.</p>
           <button class="summary-action reset" id="reset" type="button">Сбросить расчёт</button>
         </div>
         <p class="copy-status" id="copy-status" role="status"></p>
@@ -779,11 +813,18 @@
     const numberFormat = new Intl.NumberFormat('ru-RU');
     const moneyFormat = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     // Денежные суммы считаются в копейках, чтобы итог совпадал с разбивкой.
-    const priceForMinutes = (minutes) => Math.round(minutes * TARIFFS.hourlyRate * 100 / 60);
     const money = (kopecks) => `${(kopecks % 100 === 0 ? numberFormat : moneyFormat).format(kopecks / 100)}\u00a0₽`;
     const priceFrom = (amount) => `от ${money(amount)}`;
 
     const calculator = byId('calculator');
+    const summaryPanel = byId('summary');
+    if ('ResizeObserver' in window) {
+      const updateSummaryPin = () => {
+        summaryPanel.classList.toggle('is-pinned', summaryPanel.offsetHeight + 40 <= document.documentElement.clientHeight);
+      };
+      new ResizeObserver(updateSummaryPin).observe(summaryPanel);
+      window.addEventListener('resize', updateSummaryPin);
+    }
     const regimeSelect = byId('regime');
     const activitySelect = byId('activity');
     const patentMode = byId('patent-mode');
@@ -795,19 +836,20 @@
     const estimateRules = TARIFFS.estimate;
     const lineRules = TARIFFS.documentLines;
     const quoteByAgreement = 'По согласованию';
-    const getUnitPrice = (service) => service.price === undefined ? priceForMinutes(service.minutes) : Math.round(service.price * 100);
+    const getUnitPrice = (service) => Math.round(service.price * 100);
     const extraLinePrice = getUnitPrice({ price: lineRules.extraPrice });
     const shareButton = byId('share');
     const copyButton = byId('copy');
+    const downloadCardButton = byId('download-card');
     const printButton = byId('print');
     const actionStatus = byId('copy-status');
     const manualCopy = byId('manual-copy');
-    const hourlyPrice = money(TARIFFS.hourlyRate * 100);
     const defaultBusiness = Object.keys(TARIFFS.base)[0];
     let currentBusiness = defaultBusiness;
     let selectedRegimes = {};
     let selectedVatModes = {};
     let copyText = '';
+    let cardEstimate = null;
     let transferRequest = 0;
 
     function readQuantity(input, allowZero = false) {
@@ -822,9 +864,9 @@
       const regime = TARIFFS.base[currentBusiness].regimes[regimeSelect.value];
       if (currentBusiness !== 'ip') return regime;
       if (patentMode.value === 'standalone') return TARIFFS.patent.standalone;
-      const combinedMinutes = TARIFFS.patent.combinedMinutes[regimeSelect.value];
-      if (patentMode.value === 'combined' && combinedMinutes !== undefined) {
-        return { ...regime, label: `${regime.label} + патент`, minutes: combinedMinutes, includesPatent: true };
+      const combinedPrice = TARIFFS.patent.combinedPrices[regimeSelect.value];
+      if (patentMode.value === 'combined' && combinedPrice !== undefined) {
+        return { ...regime, label: `${regime.label} + патент`, price: combinedPrice, includesPatent: true };
       }
       return regime;
     }
@@ -842,7 +884,7 @@
 
     function renderVatModes() {
       const combinedOption = patentMode.querySelector('[value="combined"]');
-      combinedOption.disabled = !Object.hasOwn(TARIFFS.patent.combinedMinutes, regimeSelect.value);
+      combinedOption.disabled = !Object.hasOwn(TARIFFS.patent.combinedPrices, regimeSelect.value);
       if (combinedOption.disabled && patentMode.value === 'combined' && currentBusiness === 'ip') {
         patentMode.value = 'none';
       }
@@ -967,6 +1009,8 @@
       });
     }
 
+    const itemPriceText = (item) => item.displayPrice || (item.fromPrice ? priceFrom(item.price) : money(item.price));
+
     function renderBreakdown(id, items) {
       const list = byId(id);
       list.replaceChildren(...items.map((item) => {
@@ -980,7 +1024,7 @@
           detail.textContent = item.detail;
           title.append(detail);
         }
-        price.textContent = item.displayPrice || (item.fromPrice ? priceFrom(item.price) : money(item.price));
+        price.textContent = itemPriceText(item);
         row.append(title, price);
         return row;
       }));
@@ -990,8 +1034,7 @@
     function itemizedText(items) {
       return items.map((item) => {
         const detail = item.detail ? ` (${item.detail})` : '';
-        const price = item.displayPrice || (item.fromPrice ? priceFrom(item.price) : money(item.price));
-        return `• ${item.label}${detail} — ${price}`;
+        return `• ${item.label}${detail} — ${itemPriceText(item)}`;
       }).join('\n');
     }
 
@@ -1002,7 +1045,7 @@
       const items = [];
       const includedPatents = TARIFFS.patent.included;
       if (baseSelected) {
-        const basePrice = priceForMinutes(regime.minutes);
+        const basePrice = getUnitPrice(regime);
         items.push({
           label: 'Базовое сопровождение',
           detail: `${business.label}, ${regime.label}${regime.includesPatent ? ` · патентов в базе: ${includedPatents}` : ''} · ${money(basePrice)}/мес.`,
@@ -1019,7 +1062,7 @@
           });
         }
         if (clientVat.basePercent) {
-          const vatPrice = priceForMinutes(regime.minutes * clientVat.basePercent / 100);
+          const vatPrice = Math.round(basePrice * clientVat.basePercent / 100);
           items.push({
             label: 'Учёт НДС клиента',
             detail: `${clientVat.label} · ${money(vatPrice)}/мес.`,
@@ -1030,7 +1073,7 @@
       }
       const extraPatents = Math.max(0, patentCount - includedPatents);
       if (extraPatents) {
-        const unitPrice = priceForMinutes(TARIFFS.patent.extraMinutes);
+        const unitPrice = getUnitPrice(TARIFFS.patent.extra);
         items.push({
           label: 'Дополнительные патенты',
           detail: `${numberFormat.format(extraPatents)} × ${money(unitPrice)}`,
@@ -1142,11 +1185,20 @@
       renderBreakdown('adjustment-breakdown', ready ? adjustments : []);
 
       copyText = '';
+      cardEstimate = ready ? {
+        clientLine,
+        reviewLine,
+        total: totalText,
+        sections: [
+          { title: `Ежемесячные услуги · ${numberFormat.format(months)} мес.`, rows: monthlyItems },
+          { title: 'Разовые услуги', rows: oneOffItems },
+          { title: 'Скидки, наценки и итог', rows: adjustments }
+        ].filter((section) => section.rows.length)
+      } : null;
       if (ready) {
         const message = ['Предварительный расчёт бухгалтерских услуг'];
         if (clientLine) message.push(clientLine);
         if (reviewLine) message.push(reviewLine);
-        message.push(`Ставка — ${hourlyPrice}/ч. Демонстрационные нормативы.`);
         if (monthlyItems.length) {
           message.push('', `Ежемесячные услуги · ${numberFormat.format(months)} мес.`);
           if (turnoverSelect.value) message.push(`Оборот за месяц (справочно) — ${turnoverSelect.selectedOptions[0].textContent}`);
@@ -1158,6 +1210,7 @@
         copyText = message.join('\n');
       }
       copyButton.disabled = !ready;
+      downloadCardButton.disabled = !ready;
       shareButton.disabled = !ready;
       printButton.disabled = !ready;
       actionStatus.textContent = '';
@@ -1179,10 +1232,9 @@
     });
 
     byId('base-scope').textContent = `В базе — ${TARIFFS.baseScope}`;
-    byId('patent-hint').textContent = `Патентов в базовом тарифе — ${TARIFFS.patent.included}. Каждый дополнительный — ${money(priceForMinutes(TARIFFS.patent.extraMinutes))}/мес.`;
+    byId('patent-hint').textContent = `Патентов в базовом тарифе — ${TARIFFS.patent.included}. Каждый дополнительный — ${money(getUnitPrice(TARIFFS.patent.extra))}/мес.`;
     byId('payroll-limit').textContent = `При штате больше ${TARIFFS.payrollQuoteAbove} сотрудников стоимость зарплаты и кадрового делопроизводства согласуем отдельно.`;
     byId('primary-hint').textContent = `Укажите количество документов за месяц. Для каждого вида сложите строки после ${lineRules.included}-й в каждом документе и внесите сумму в поле «Строк сверх лимита, всего».`;
-    byId('hourly-note').textContent = `Ставка — ${hourlyPrice}/ч. Окончательная стоимость зависит от состава и объёма работ.`;
     byId('urgent-option').textContent = `Срочно (+${estimateRules.urgencyPercent}%)`;
     byId('billing-vat-option').textContent = `НДС ${estimateRules.vatPercent}% сверху`;
     const volume = estimateRules.volumeDiscount;
@@ -1222,7 +1274,7 @@
       {
         target: '#copy',
         title: 'Проверьте итог и скопируйте расчёт',
-        description: 'Сверьте сумму и разбивку в смете. Когда расчёт готов, нажмите «Скопировать расчёт» и вставьте текст в сообщение.'
+        description: 'Сверьте сумму и разбивку. Нажмите «Скопировать карточку», чтобы отправить смету в сообщении. Для печати сохраните PDF.'
       }
     ];
     const tourLaunch = byId('tour-launch');
@@ -1378,8 +1430,142 @@
       actionStatus.textContent = copied ? successMessage : 'Скопируйте выделенный текст вручную.';
     }
 
-    copyButton.addEventListener('click', () => {
-      return copyEstimate(copyButton, 'Расчёт скопирован. Его можно вставить в сообщение.');
+    function createEstimatePng(estimate) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 840;
+      const context = canvas.getContext('2d');
+      const ink = '#382e26';
+      const burgundy = '#823a4c';
+      const muted = '#675a50';
+      const inset = 49;
+      const contentWidth = canvas.width - 2 * inset;
+      const priceWidth = 224;
+      const labelWidth = contentWidth - priceWidth - 18;
+      const rowFont = '600 21px "Segoe UI", sans-serif';
+      const detailFont = '18px "Segoe UI", sans-serif';
+      const drawing = [];
+
+      function addLine(text, x, y, font, color, maxWidth, align = 'left') {
+        drawing.push(() => {
+          context.font = font;
+          context.fillStyle = color;
+          context.textAlign = align;
+          context.fillText(text, x, y, maxWidth);
+        });
+      }
+
+      function addParagraph(text, y, font, color, width, lineHeight) {
+        context.font = font;
+        let line = '';
+        for (const word of text.split(' ')) {
+          const next = line ? `${line} ${word}` : word;
+          if (context.measureText(next).width <= width) {
+            line = next;
+            continue;
+          }
+          if (line) {
+            addLine(line, inset, y, font, color, width);
+            y += lineHeight;
+          }
+          line = '';
+          for (const character of word) {
+            if (line && context.measureText(line + character).width > width) {
+              addLine(line, inset, y, font, color, width);
+              y += lineHeight;
+              line = '';
+            }
+            line += character;
+          }
+        }
+        if (line) {
+          addLine(line, inset, y, font, color, width);
+          y += lineHeight;
+        }
+        return y;
+      }
+
+      function addRule(y) {
+        drawing.push(() => {
+          context.fillStyle = '#e4d9cf';
+          context.fillRect(inset, y, contentWidth, 1);
+        });
+      }
+
+      addLine('Предварительный расчёт', inset, 53, '41px Georgia, serif', ink, contentWidth);
+      let y = 113;
+      if (estimate.clientLine) y = addParagraph(estimate.clientLine, y, rowFont, ink, contentWidth, 29) + 4;
+      if (estimate.reviewLine) y = addParagraph(estimate.reviewLine, y, detailFont, muted, contentWidth, 25) + 8;
+
+      const totalTop = y;
+      drawing.push(() => {
+        context.fillStyle = '#f4e7e6';
+        context.fillRect(inset - 12, totalTop, contentWidth + 24, 101);
+      });
+      addLine('Итого', inset, y + 13, detailFont, muted, contentWidth);
+      addLine(estimate.total, inset, y + 37, '48px Georgia, serif', burgundy, contentWidth);
+      y += 125;
+
+      for (const section of estimate.sections) {
+        y = addParagraph(section.title, y, '26px Georgia, serif', burgundy, contentWidth, 32) + 6;
+        for (const item of section.rows) {
+          addLine(itemPriceText(item), canvas.width - inset, y, rowFont, ink, priceWidth, 'right');
+          y = addParagraph(item.label, y, rowFont, ink, labelWidth, 26);
+          if (item.detail) y = addParagraph(item.detail, y + 2, detailFont, muted, contentWidth, 24);
+          addRule(y + 7);
+          y += 18;
+        }
+        y += 13;
+      }
+      y = addParagraph('Окончательная стоимость зависит от состава и объёма работ.', y, detailFont, muted, contentWidth, 24);
+      canvas.height = y + 48;
+      context.textBaseline = 'top';
+      context.fillStyle = '#f6f1e8';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = '#fffdf8';
+      context.fillRect(23, 23, canvas.width - 46, canvas.height - 46);
+      context.fillStyle = burgundy;
+      context.fillRect(23, 23, canvas.width - 46, 5);
+      drawing.forEach((draw) => draw());
+
+      return new Promise((resolve, reject) => canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Не удалось создать PNG.'));
+      }, 'image/png'));
+    }
+
+    copyButton.addEventListener('click', async () => {
+      const request = ++transferRequest;
+      actionStatus.textContent = '';
+      manualCopy.hidden = true;
+      try {
+        if (!navigator.clipboard?.write || !window.ClipboardItem) throw new Error();
+        const image = createEstimatePng(cardEstimate);
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': image })]);
+        if (request === transferRequest) actionStatus.textContent = 'Карточка скопирована. Вставьте её в сообщение.';
+      } catch {
+        if (request === transferRequest) actionStatus.textContent = 'Копирование изображения недоступно. Нажмите «Скачать PNG» и прикрепите файл к сообщению.';
+      }
+    });
+
+    downloadCardButton.addEventListener('click', async () => {
+      const request = ++transferRequest;
+      actionStatus.textContent = '';
+      manualCopy.hidden = true;
+      try {
+        const blob = await createEstimatePng(cardEstimate);
+        if (request !== transferRequest) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'Предварительный расчёт.png';
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 30_000);
+        actionStatus.textContent = 'Карточка подготовлена для скачивания.';
+      } catch {
+        if (request === transferRequest) actionStatus.textContent = 'Не удалось подготовить карточку. Попробуйте ещё раз.';
+      }
     });
     printButton.addEventListener('click', () => window.print());
 
